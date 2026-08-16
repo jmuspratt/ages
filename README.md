@@ -55,9 +55,11 @@ Field details:
 
 There is no families list. A family is nothing but the set of distinct `family` strings across the roster, derived on read by `familyNames()` — which is the whole reason a group disappears the moment its last member leaves or is reassigned. There is no cleanup step because there is no record to clean up. Don't promote families to stored entities to add ordering or colours; the auto-delete behaviour is a consequence of them not existing.
 
-Grouping is deliberately self-effacing. `groupedPeople()` returns a single unnamed group — the flat list, exactly as before — unless a heading would actually separate somebody: two or more families, or one family alongside an unassigned person. A single household therefore never sees a heading — its card already says what the label would, the same instinct as the Today pill hiding at centre. Anyone unassigned trails the named groups with no heading and no card at all: the card is what marks a family off, so the remainder reads as "everyone else" without needing to be told.
+`groupedPeople()` returns one group per family, in oldest-member order, followed by a single unnamed group holding anyone unassigned. Each family renders as a titled card; the unnamed remainder renders bare on the page, with no card and no heading, because there's no group to name — the card is what marks a family off, so everyone else reads as "everyone else" without being told.
 
-Each family renders as a rounded card on the page background; `headingsVisible()` decides only whether that card gets a title, and is separate from `groupedPeople()`, which always keeps families as their own groups.
+Every card is titled, including when only one family exists. An earlier version suppressed that heading on the grounds it said nothing new; cards made it say something essential, since an untitled card is just an anonymous box.
+
+Each family renders as a rounded card on the page background, titled with the family's name.
 
 Names join case-insensitively: typing "the smiths" when "The Smiths" exists assigns the existing spelling rather than opening a near-identical second group. Renaming a family means editing each member — acceptable while rosters are one household.
 

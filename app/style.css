@@ -136,7 +136,8 @@ button {
   justify-content: space-between;
   height: calc(var(--title-bar-height) + env(safe-area-inset-top));
   padding: env(safe-area-inset-top) var(--space-8) 0 var(--space-16);
-  background: var(--bar-bg);
+  /* background: var(--bar-bg); */
+  border-bottom: solid 1px var(--bar-border);
 }
 
 /* Just the app's name now — the active date moved into the content area, where
@@ -162,7 +163,7 @@ button {
    heading over the cards instead of a row within them. Takes the same tense
    colour as the age and grade phrases beneath it. */
 #date-heading {
-  padding: var(--space-20) var(--space-12) 0;
+  padding: var(--space-32) var(--space-12) 0;
   font-size: var(--font-size-17);
   font-weight: 600;
   color: var(--value, var(--value-present));
@@ -190,8 +191,8 @@ button {
   padding: 0 var(--space-16) var(--space-16);
 }
 
-/* Only rendered when a heading would tell this family from something else —
-   see headingsVisible(). A single household's card goes untitled. */
+/* Every family card is titled, however many families there are. Unassigned
+   people get no card and so no heading. */
 .family-heading {
   padding: var(--space-12) var(--space-16) var(--space-4);
   font-size: var(--font-size-11);
@@ -266,6 +267,7 @@ body[data-tense="past"] {
   font-size: var(--font-size-12);
 }
 
+/* The empty state's one big call to action — the only filled button left. */
 .cta-btn {
   display: inline-block;
   margin-top: var(--space-20);
@@ -274,6 +276,16 @@ body[data-tense="past"] {
   color: var(--accent-text);
   border-radius: 8px;
   font-size: var(--font-size-14);
+}
+
+/* Outlined pill: blue label, grey ring, no fill. Shared by Add someone, Edit
+   and Save, so every button that commits to something reads the same. Plain
+   text buttons (Manage, Done, Cancel, Today, Export/Import) are the quieter
+   tier and carry no container at all. */
+.pill-btn {
+  border: 1px solid var(--field-border);
+  border-radius: 999px;
+  padding: var(--space-8) var(--space-16);
 }
 
 /* --- Manage panel --- */
@@ -291,9 +303,9 @@ body[data-tense="past"] {
   flex-direction: column;
 }
 
-/* Sits below the roster, so it keeps .cta-btn's own top margin as the gap. */
 #add-person-btn {
   width: 100%;
+  margin-top: var(--space-20);
   text-align: center;
 }
 
@@ -357,8 +369,7 @@ body[data-tense="past"] {
   margin-top: var(--space-4);
 }
 
-#form-actions .cta-btn {
-  margin-top: 0;
+#form-actions .pill-btn {
   flex: 1;
   text-align: center;
 }
@@ -460,11 +471,9 @@ body[data-tense="past"] {
   color: var(--text-muted);
 }
 
+/* Plain blue word, no container — the same quiet tier as Manage. */
 #today-btn {
   flex-shrink: 0;
-  border: 1px solid var(--field-border);
-  border-radius: 999px;
-  padding: var(--space-4) var(--space-12);
 }
 
 #time-slider {

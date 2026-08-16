@@ -302,14 +302,10 @@ function groupedPeople() {
   return groups;
 }
 
-// A heading only earns its space when it tells one family from something else.
-// A lone family holding the whole roster is already evident from its card, so
-// naming it there would just repeat what the card says.
-function headingsVisible() {
-  const names = familyNames();
-  if (names.length > 1) return true;
-  return names.length === 1 && people.some((person) => !familyOf(person));
-}
+// Every family card is titled. There used to be a rule suppressing the heading
+// for a lone family — back when a heading sat loose above a flat list and would
+// have been the only thing there. A card needs its name regardless: an untitled
+// one just leaves you working out whose it is.
 
 // --- Elements ---
 
@@ -348,21 +344,17 @@ function buildList() {
   peopleList.innerHTML = "";
   rowRefs = [];
 
-  const showHeadings = headingsVisible();
-
   for (const group of groupedPeople()) {
-    // A named family gets a card; the nameless remainder sits bare on the page.
-    // Rows nest in their own <ul> so an <li> never contains another directly.
+    // A named family gets a titled card; the nameless remainder sits bare on
+    // the page. Rows nest in their own <ul> so an <li> never contains another.
     let container = peopleList;
     if (group.name) {
       const card = document.createElement("li");
       card.className = "family-card";
-      if (showHeadings) {
-        const heading = document.createElement("div");
-        heading.className = "family-heading";
-        heading.textContent = group.name;
-        card.append(heading);
-      }
+      const heading = document.createElement("div");
+      heading.className = "family-heading";
+      heading.textContent = group.name;
+      card.append(heading);
       const inner = document.createElement("ul");
       inner.className = "family-people";
       card.append(inner);
@@ -589,20 +581,16 @@ function openForm(person) {
 function buildManageList() {
   manageList.innerHTML = "";
   // Same grouping as the main list, so the roster you edit matches the one you
-  // read — including the rule that suppresses headings for a single household.
-  const showHeadings = headingsVisible();
-
+  // read — same titled cards, same order, same styling.
   for (const group of groupedPeople()) {
     let container = manageList;
     if (group.name) {
       const card = document.createElement("li");
       card.className = "family-card";
-      if (showHeadings) {
-        const heading = document.createElement("div");
-        heading.className = "family-heading";
-        heading.textContent = group.name;
-        card.append(heading);
-      }
+      const heading = document.createElement("div");
+      heading.className = "family-heading";
+      heading.textContent = group.name;
+      card.append(heading);
       const inner = document.createElement("ul");
       inner.className = "family-people";
       card.append(inner);
@@ -625,10 +613,8 @@ function buildManageList() {
         formatShortDate(parseDate(person.birthdate)),
         `${gradeName(person.anchorGrade)} in ${schoolYearLabel(person.anchorYear)}`,
       ];
-      // Only when no heading is carrying it — otherwise the family would be
-      // stated twice, immediately above the row and again inside it.
-      const family = familyOf(person);
-      if (!showHeadings && family) bits.push(family);
+      // The card's heading always carries the family now, so repeating it in
+      // the row would just state it twice.
       detail.textContent = bits.join(" · ");
       info.append(name, detail);
 

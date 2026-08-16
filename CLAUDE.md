@@ -21,7 +21,9 @@ A single-page PWA that shows a set of kids' ages and American K-12 grade levels 
 - **No centre snap-detent on the slider.** A detent wide enough to feel would make ±1 month unreachable. The **Today** button does that job instead.
 - **Summer shows "Rising Nth".** June–August has no current grade. Reporting the grade they're rising into matches how people actually speak in July, and avoids the awkward "she's in 3rd" when 3rd ended in June.
 - **Families are derived, never stored.** A family is only the set of distinct `person.family` strings, read back by `familyNames()`. That's precisely why an empty group deletes itself — there's no record to delete. Don't add a families array to hang ordering or colours off; it would turn free auto-delete into a cleanup step you have to maintain.
-- **Family headings hide when they'd say nothing.** `groupedPeople()` falls back to the flat list unless a heading actually separates people — two families, or one family plus someone unassigned. A single household sees no heading at all — its card already says what the label would. Unassigned people get neither heading nor card; the card is what marks a family off, so the remainder reads as "everyone else" unaided. `headingsVisible()` is deliberately separate from `groupedPeople()`: grouping always keeps a family as its own group so it always gets a card, and only the title is conditional.
+- **Every family card carries its name.** The heading always renders, however many families exist — a card without a title is an anonymous box. There was once a rule suppressing it for a lone family; that was sound when a heading floated above a flat list and would have been the only thing on screen, and wrong the moment cards arrived. Don't reintroduce it. Unassigned people are the opposite case: no card and no heading, because there's no group to name.
+
+Unassigned people get neither heading nor card. The card is what marks a family off, so the remainder reads as "everyone else" unaided.
 
 ## Frontend details
 
@@ -40,9 +42,11 @@ No hamburger menus, no navbars, no routing.
 
 `#manage-view` (roster, Add button, Export/Import, version) and `#person-form` are never on screen together.
 
-The roster carries the same family headings as the main list, from the same `groupedPeople()` — so the list you edit matches the list you read, including the suppression rule for a single household.
+The roster carries the same titled family cards as the main list, from the same `groupedPeople()` — so the list you edit matches the list you read.
 
-It also shares the *styling*, not just the structure: `.family-card`, `.family-heading` and `.family-people` are used unmodified in both places, `#manage-panel`'s gutter matches `#people-list`'s, and `.manage-row` mirrors `.person-row`'s padding while `.manage-name` / `.manage-detail` mirror `.person-name` / `.person-birth`. There are deliberately **no** `#manage-list .family-*` overrides — the two screens drifted apart once already because the card carried its padding in one place and the row carried it in the other. If you restyle a card, restyle it once. When headings are showing, the family is left out of each row's detail line; it would otherwise be stated twice, immediately above the row and again inside it. When they're suppressed, the detail line is the only place an assignment appears, so it goes back in. Opening Manage lands on the roster — the form is not exposed until you tap **Add someone…** — and opening the form hides the roster, so editing one person doesn't leave the others sitting behind it. `showManageView()` and `openForm(person)` are the only two transitions; `openForm()` with no argument means adding.
+It also shares the *styling*, not just the structure: `.family-card`, `.family-heading` and `.family-people` are used unmodified in both places, `#manage-panel`'s gutter matches `#people-list`'s, and `.manage-row` mirrors `.person-row`'s padding while `.manage-name` / `.manage-detail` mirror `.person-name` / `.person-birth`. There are deliberately **no** `#manage-list .family-*` overrides — the two screens drifted apart once already because the card carried its padding in one place and the row carried it in the other. If you restyle a card, restyle it once. The family never appears in a row's detail line — the card's heading always states it, so repeating it inside the row would say it twice.
+
+Opening Manage lands on the roster — the form is not exposed until you tap **Add someone…** — and opening the form hides the roster, so editing one person doesn't leave the others sitting behind it. `showManageView()` and `openForm(person)` are the only two transitions; `openForm()` with no argument means adding.
 
 This is deliberately a view swap and not a modal — no overlay, no backdrop, no z-index, no scroll lock — which is how it satisfies "no modals, drawers, or overlays" while still reading as a sheet on a phone. The title bar's **Done** hides while the form is up, so Cancel and Save are the only exits and there's never a third ambiguous one.
 
@@ -81,6 +85,16 @@ Out-of-range grade clauses keep `--grade-out` and are **not** tinted — `.perso
 
 Every colour is chosen against its background for WCAG AA at 15px (4.5:1), in both schemes, and the measured ratio is written beside each custom property in `style.css`. If you change one, re-measure it; don't eyeball a replacement. Note `--grade-out` itself predates this and sits below AA (2.85:1 light, 3.89:1 dark) — deliberate de-emphasis, but worth knowing it's a gap.
 
+### Button tiers
+
+Three, and only three. Don't invent a fourth:
+
+- **`.pill-btn`** — outlined pill, blue label, no fill. The two actions that start or commit a whole task: **Add someone** and **Save**.
+- **Plain text** (the bare `button` rule) — blue word, no container. Everything else: **Manage**, **Done**, **Cancel**, **Today**, **Export**, **Import**, and the per-row **Edit**. **Remove** is this tier too but in `--danger`. Row-level controls stay here deliberately — a pill on every row would put two outlined containers beside each person and make the roster louder than the list it mirrors.
+- **`.cta-btn`** — solid blue fill. Used exactly once, for the empty state's **Add someone…**, where there's nothing else on screen to compete with. If you find yourself reaching for it a second time, you want `.pill-btn`.
+
+**Today** deliberately sits in the plain tier and matches Manage: it's a shortcut back to now, not a commitment, and it already earns attention by appearing only when off-centre.
+
 ### Grade arithmetic
 
 All of it hangs off `schoolYearOf(date)`, which names a school year for the September that starts it. Grade is `anchorGrade + (schoolYearOf(date) - anchorYear)`, with the summer months substituting the calendar year. `anchorGrade` is an integer: `-1` Pre-K, `0` Kindergarten, `1`–`12` numbered. Keep it that way — the integer encoding is what makes every other grade a single addition.
@@ -110,7 +124,7 @@ The service worker cache-firsts the entire app shell. There are no dynamic reque
 - Form inputs must be `--font-size-zoom-safe` (16px) or iOS zooms the viewport on focus
 - Safe area insets on both fixed bars: `env(safe-area-inset-top)` / `env(safe-area-inset-bottom)`
 - Cards, not rules. `--bg` is the page, `--card` the surface a family sits on (white in light, pure black in dark). There are no horizontal rules anywhere in either list — the card edge does that work, and unassigned rows need no separator at all. A gutter on `#people-list` replaced the old edge-to-edge treatment; rows inside a card and bare rows outside one are padded to the same text inset so the left edge never jogs.
-- Contrast is measured against `--bg`, not `--card`. Ungrouped rows sit directly on the page, which is the tighter of the two surfaces, so tuning to it means everything passes on a card for free. This is why `--value-future` and `--value-past` are darker than a pure white background alone would require.
+- Contrast is measured against `--bg`, not `--card`. Unassigned rows sit directly on the page, which is the tighter of the two surfaces, so tuning to it means everything passes on a card for free. This is why `--value-future` and `--value-past` are darker than a pure white background alone would require.
 - No visible scrollbars
 
 ### Storage

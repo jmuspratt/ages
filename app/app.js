@@ -14,6 +14,10 @@ const PRE_K = -1;
 const KINDERGARTEN = 0;
 const LAST_GRADE = 12;
 
+// Sentinel value for the family picker's "New family…" option, which reveals a
+// text field rather than selecting anything.
+const NEW_FAMILY = "__new__";
+
 let people = loadPeople();
 let sliderValue = CENTER;
 let editingId = null;
@@ -241,6 +245,47 @@ function sortedPeople() {
   return [...people].sort((a, b) => a.birthdate.localeCompare(b.birthdate));
 }
 
+// --- Families ---
+
+// Families are derived from the people themselves rather than kept as records
+// of their own. That's what makes "delete when empty" free: a name nobody is
+// assigned to simply stops being returned, with nothing to clean up.
+function familyOf(person) {
+  return (person.family || "").trim();
+}
+
+// Distinct names, ordered by their oldest member, so groups fall down the page
+// in the same order the ungrouped roster would.
+function familyNames() {
+  const names = [];
+  for (const person of sortedPeople()) {
+    const family = familyOf(person);
+    if (family && !names.includes(family)) names.push(family);
+  }
+  return names;
+}
+
+// A heading only earns its space when it separates people from someone else.
+// One family with everyone in it — the common single-household case — reads
+// better as the plain list it was before this existed.
+function groupedPeople() {
+  const sorted = sortedPeople();
+  const names = familyNames();
+  const loose = sorted.filter((person) => !familyOf(person));
+
+  if (names.length === 0 || (names.length === 1 && loose.length === 0)) {
+    return [{ name: "", people: sorted }];
+  }
+
+  const groups = names.map((name) => ({
+    name,
+    people: sorted.filter((person) => familyOf(person) === name),
+  }));
+  // Anyone unassigned trails the named groups, under no heading of their own.
+  if (loose.length > 0) groups.push({ name: "", people: loose });
+  return groups;
+}
+
 // --- Elements ---
 
 const el = (id) => document.getElementById(id);
@@ -263,6 +308,8 @@ const nameInput = el("person-name");
 const birthdateInput = el("person-birthdate");
 const anchorYearSelect = el("person-anchor-year");
 const gradeSelect = el("person-grade");
+const familySelect = el("person-family");
+const familyNewInput = el("person-family-new");
 const backupText = el("backup-text");
 
 // Cached per-row nodes, so dragging the slider only rewrites two text nodes
@@ -275,27 +322,36 @@ function buildList() {
   peopleList.innerHTML = "";
   rowRefs = [];
 
-  for (const person of sortedPeople()) {
-    const li = document.createElement("li");
-    li.className = "person-row";
+  for (const group of groupedPeople()) {
+    if (group.name) {
+      const heading = document.createElement("li");
+      heading.className = "family-heading";
+      heading.textContent = group.name;
+      peopleList.append(heading);
+    }
 
-    const sentence = document.createElement("p");
-    sentence.className = "person-sentence";
-    const name = document.createElement("span");
-    name.className = "person-name";
-    name.textContent = person.name;
-    const age = document.createElement("span");
-    const grade = document.createElement("span");
-    grade.className = "person-grade";
-    sentence.append(name, age, grade, document.createTextNode("."));
+    for (const person of group.people) {
+      const li = document.createElement("li");
+      li.className = "person-row";
 
-    const birth = document.createElement("p");
-    birth.className = "person-birth";
-    birth.textContent = `Born ${formatLongDate(parseDate(person.birthdate))}`;
+      const sentence = document.createElement("p");
+      sentence.className = "person-sentence";
+      const name = document.createElement("span");
+      name.className = "person-name";
+      name.textContent = person.name;
+      const age = document.createElement("span");
+      const grade = document.createElement("span");
+      grade.className = "person-grade";
+      sentence.append(name, age, grade, document.createTextNode("."));
 
-    li.append(sentence, birth);
-    peopleList.append(li);
-    rowRefs.push({ person, age, grade });
+      const birth = document.createElement("p");
+      birth.className = "person-birth";
+      birth.textContent = `Born ${formatLongDate(parseDate(person.birthdate))}`;
+
+      li.append(sentence, birth);
+      peopleList.append(li);
+      rowRefs.push({ person, age, grade });
+    }
   }
 }
 
@@ -359,6 +415,65 @@ function populateSelects() {
     gradeSelect.append(opt);
   }
   gradeSelect.value = String(KINDERGARTEN);
+
+  populateFamilySelect("");
+}
+
+// Rebuilt from the roster on every call, so a family that just lost its last
+// member is absent from the picker as well as from the list.
+function populateFamilySelect(selected) {
+  familySelect.innerHTML = "";
+
+  const none = document.createElement("option");
+  none.value = "";
+  none.textContent = "No family";
+  familySelect.append(none);
+
+  for (const name of familyNames()) {
+    const opt = document.createElement("option");
+    opt.value = name;
+    opt.textContent = name;
+    familySelect.append(opt);
+  }
+
+  const create = document.createElement("option");
+  create.value = NEW_FAMILY;
+  create.textContent = "New family…";
+  familySelect.append(create);
+
+  familySelect.value = selected;
+  syncFamilyInput();
+}
+
+// The free-text field exists only while "New family…" is the selection.
+function syncFamilyInput() {
+  const creating = familySelect.value === NEW_FAMILY;
+  familyNewInput.hidden = !creating;
+  if (!creating) familyNewInput.value = "";
+}
+
+// Keeps the current choice across a roster change, unless it was a family that
+// just disappeared along with its last member.
+function refreshFamilySelect() {
+  const current = familySelect.value;
+  const keep =
+    current === NEW_FAMILY || familyNames().includes(current) ? current : "";
+  populateFamilySelect(keep);
+}
+
+// Typing a name that already exists in another case joins that family instead
+// of standing up a near-identical second one beside it.
+function chosenFamily() {
+  const raw =
+    familySelect.value === NEW_FAMILY
+      ? familyNewInput.value
+      : familySelect.value;
+  const family = raw.trim();
+  if (!family) return "";
+  const existing = familyNames().find(
+    (name) => name.toLowerCase() === family.toLowerCase(),
+  );
+  return existing || family;
 }
 
 function resetForm() {
@@ -383,6 +498,7 @@ function startEdit(person) {
   }
   anchorYearSelect.value = String(person.anchorYear);
   gradeSelect.value = String(person.anchorGrade);
+  populateFamilySelect(familyOf(person));
   formHeading.textContent = `Edit ${person.name}`;
   formCancelBtn.hidden = false;
   nameInput.focus();
@@ -401,9 +517,15 @@ function buildManageList() {
     name.textContent = person.name;
     const detail = document.createElement("div");
     detail.className = "manage-detail";
-    detail.textContent =
-      `${formatShortDate(parseDate(person.birthdate))} · ` +
-      `${gradeName(person.anchorGrade)} in ${schoolYearLabel(person.anchorYear)}`;
+    const bits = [
+      formatShortDate(parseDate(person.birthdate)),
+      `${gradeName(person.anchorGrade)} in ${schoolYearLabel(person.anchorYear)}`,
+    ];
+    // Shown here even when the list suppresses headings, so an assignment is
+    // never invisible.
+    const family = familyOf(person);
+    if (family) bits.push(family);
+    detail.textContent = bits.join(" · ");
     info.append(name, detail);
 
     const actions = document.createElement("div");
@@ -421,6 +543,8 @@ function buildManageList() {
       people = people.filter((p) => p.id !== person.id);
       savePeople();
       if (editingId === person.id) resetForm();
+      // They may have been the last member of their family.
+      refreshFamilySelect();
       buildManageList();
     });
     actions.append(editBtn, removeBtn);
@@ -457,6 +581,7 @@ form.addEventListener("submit", (e) => {
     birthdate: birthdateInput.value,
     anchorYear: Number(anchorYearSelect.value),
     anchorGrade: Number(gradeSelect.value),
+    family: chosenFamily(),
   };
 
   if (editingId) {
@@ -471,6 +596,11 @@ form.addEventListener("submit", (e) => {
   savePeople();
   resetForm();
   buildManageList();
+});
+
+familySelect.addEventListener("change", () => {
+  syncFamilyInput();
+  if (!familyNewInput.hidden) familyNewInput.focus();
 });
 
 formCancelBtn.addEventListener("click", resetForm);

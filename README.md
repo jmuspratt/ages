@@ -39,7 +39,8 @@ Each person, held in localStorage:
   "name": "Ida",
   "birthdate": "2017-04-02",
   "anchorYear": 2026,
-  "anchorGrade": 3
+  "anchorGrade": 3,
+  "family": "The Smiths"
 }
 ```
 
@@ -48,6 +49,15 @@ Field details:
 - `id`: URL-safe slug of the name, generated on add. Suffixed if it collides.
 - `birthdate`: `YYYY-MM-DD`. Parsed as a *local* date — `new Date("2017-04-02")` would be read as UTC and land a day early for anyone west of Greenwich.
 - `anchorYear` + `anchorGrade`: the heart of the app. Grade isn't derivable from a birthdate — cutoffs vary, kids get held back or skip — so it's captured once, as "in school year X, they were in grade Y", and every other year is arithmetic from there.
+- `family`: optional free text. Absent or empty means unassigned; records predating the field simply read as unassigned.
+
+### Families
+
+There is no families list. A family is nothing but the set of distinct `family` strings across the roster, derived on read by `familyNames()` — which is the whole reason a group disappears the moment its last member leaves or is reassigned. There is no cleanup step because there is no record to clean up. Don't promote families to stored entities to add ordering or colours; the auto-delete behaviour is a consequence of them not existing.
+
+Grouping is deliberately self-effacing. `groupedPeople()` returns a single unnamed group — the flat list, exactly as before — unless a heading would actually separate somebody: two or more families, or one family alongside an unassigned person. A single household therefore never sees a heading, the same way the Today pill hides at centre. Unassigned people trail the named groups under no heading of their own.
+
+Names join case-insensitively: typing "the smiths" when "The Smiths" exists assigns the existing spelling rather than opening a near-identical second group. Renaming a family means editing each member — acceptable while rosters are one household.
 
 `anchorGrade` is an integer so the arithmetic is trivial: `-1` = Pre-K, `0` = Kindergarten, `1`–`12` = numbered grades. Values outside that range are still meaningful and get rendered as "Not in school yet" or "Graduated" / "N yrs past high school".
 

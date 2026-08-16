@@ -20,6 +20,8 @@ A single-page PWA that shows a set of kids' ages and American K-12 grade levels 
 - **Monthly slider, no date picker.** The spec explicitly didn't want a traditional date picker. Grade transitions always land on September 1, so month resolution loses nothing.
 - **No centre snap-detent on the slider.** A detent wide enough to feel would make ±1 month unreachable. The **Today** button does that job instead.
 - **Summer shows "Rising Nth".** June–August has no current grade. Reporting the grade they're rising into matches how people actually speak in July, and avoids the awkward "she's in 3rd" when 3rd ended in June.
+- **Families are derived, never stored.** A family is only the set of distinct `person.family` strings, read back by `familyNames()`. That's precisely why an empty group deletes itself — there's no record to delete. Don't add a families array to hang ordering or colours off; it would turn free auto-delete into a cleanup step you have to maintain.
+- **Family headings hide when they'd say nothing.** `groupedPeople()` falls back to the flat list unless a heading actually separates people — two families, or one family plus someone unassigned. A single household sees no heading at all, the same instinct as the Today pill hiding at centre.
 
 ## Frontend details
 

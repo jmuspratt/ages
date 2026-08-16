@@ -148,6 +148,23 @@ button {
   border-bottom: 1px solid var(--separator);
 }
 
+/* Only rendered when a heading would actually separate people — see
+   groupedPeople(). A single household never sees one. */
+.family-heading {
+  padding: var(--space-16) var(--space-16) var(--space-6);
+  font-size: var(--font-size-11);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* The first heading sits directly under the fixed title bar, where the
+   full leading above would read as a gap rather than a grouping. */
+.family-heading:first-child {
+  padding-top: var(--space-10);
+}
+
 .person-sentence {
   font-size: var(--font-size-15);
   line-height: 1.35;
@@ -229,8 +246,19 @@ button {
 }
 
 #person-form label + input,
-#person-form label + #grade-row {
+#person-form label + #grade-row,
+#person-form label + #family-row {
   margin-bottom: var(--space-12);
+}
+
+#family-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.optional-note {
+  color: var(--text-faint);
 }
 
 #person-form input,

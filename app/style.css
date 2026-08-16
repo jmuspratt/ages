@@ -1,10 +1,9 @@
 :root {
-  --bg: #ffffff;
-  --bg-alt: #f7f7f7;
+  --bg: #eeeeee; /* the page the family cards sit on */
+  --card: #ffffff; /* family cards — the surface most text lands on */
   --text: #1a1a1a;
   --text-muted: #888;
   --text-faint: #aaa;
-  --separator: #e8e8e8;
   --bar-bg: #ffffff;
   --bar-border: #e0e0e0;
   --field-border: #ccc;
@@ -12,14 +11,16 @@
   --accent: #007aff;
   --accent-text: #ffffff; /* text against an --accent background; same in both themes */
   /* The sentence body; the age and grade phrases lift out of it in --value-*.
-     Ratios are against --bg, for 15px text, so the bar is AA 4.5:1. */
-  --sentence: #666; /* 5.74:1 */
-  --value-present: #1a1a1a; /* today — 17.40:1 */
-  --value-future: #1a7f37; /* ahead of today — 5.08:1 */
-  /* Orange, not brown: on white the ratio caps how bright an orange can be, and
-     dropping the lightness far enough to pass drifts it toward brown. Hue 23°
-     at full saturation is the compromise that still reads orange. */
-  --value-past: #c04a00; /* behind today — 4.98:1 */
+     Ratios below are against --bg, the *page*, because ungrouped rows sit
+     directly on it — the worst surface any of this text lands on. On a --card
+     every one of these is comfortably higher. 15px text, so the bar is 4.5:1. */
+  --sentence: #666; /* 4.95:1 */
+  --value-present: #1a1a1a; /* today — 15.00:1 */
+  --value-future: #15703a; /* ahead of today — 5.31:1 */
+  /* Orange, not brown: the ratio caps how bright an orange can be, and dropping
+     the lightness far enough to pass drifts it toward brown. Hue 24° at full
+     saturation is the compromise that still reads orange. */
+  --value-past: #b34700; /* behind today — 4.74:1 */
   --grade-out: #999; /* not-in-school / graduated: present but de-emphasized */
   --danger: #a05040;
   --track: #dcdcdc;
@@ -34,7 +35,7 @@
   --font-size-14: 14px;
   --font-size-15: 15px;
   --font-size-17: 17px;
-  --font-size-22: 22px;
+  --font-size-20: 20px;
   --font-size-zoom-safe: 16px; /* min size to prevent iOS zoom-on-focus */
 
   /* Spacing */
@@ -54,21 +55,20 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #1a1a1a;
-    --bg-alt: #222;
+    --bg: #242424;
+    --card: #000000;
     --text: #e8e8e8;
     --text-muted: #888;
     --text-faint: #666;
-    --separator: #2a2a2a;
     --bar-bg: #1a1a1a;
     --bar-border: #303030;
     --field-border: #444;
     --field-bg: #222;
     --accent: #0a84ff;
-    --sentence: #9a9a9a; /* 6.19:1 */
-    --value-present: #e8e8e8; /* 14.20:1 */
-    --value-future: #3fb950; /* 6.85:1 */
-    --value-past: #d29922; /* 6.90:1 */
+    --sentence: #9a9a9a; /* 5.52:1 */
+    --value-present: #e8e8e8; /* 12.67:1 */
+    --value-future: #3fb950; /* 6.11:1 */
+    --value-past: #d29922; /* 6.15:1 */
     --grade-out: #777;
     --danger: #c07060;
     --track: #3a3a3a;
@@ -137,16 +137,14 @@ button {
   height: calc(var(--title-bar-height) + env(safe-area-inset-top));
   padding: env(safe-area-inset-top) var(--space-8) 0 var(--space-16);
   background: var(--bar-bg);
-  border-bottom: 1px solid var(--bar-border);
 }
 
+/* Just the app's name now — the active date moved into the content area, where
+   #date-heading carries it and the tense colour with it. */
 #app-title {
-  font-size: var(--font-size-15);
+  font-size: var(--font-size-13);
   font-weight: 600;
-  /* Same tense colour as the age and grade phrases below, so the heading and
-     the rows read as one statement about the same moment. */
-  color: var(--value, var(--value-present));
-  /* Holds a full date, so it has to yield before the Manage button does */
+  color: var(--text);
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
@@ -160,30 +158,47 @@ button {
 
 /* --- People list --- */
 
+/* Aligned to the card edge rather than the text inside one, so it reads as a
+   heading over the cards instead of a row within them. Takes the same tense
+   colour as the age and grade phrases beneath it. */
+#date-heading {
+  padding: var(--space-20) var(--space-12) 0;
+  font-size: var(--font-size-17);
+  font-weight: 600;
+  color: var(--value, var(--value-present));
+}
+
 #people-list {
   list-style: none;
+  padding: var(--space-20) var(--space-12);
+}
+
+/* A family reads as one object. No rules anywhere — the card edge does the
+   separating that a border used to, and unassigned people need neither. */
+.family-card {
+  background: var(--card);
+  border-radius: 8px;
+  margin-bottom: var(--space-20);
+}
+
+.family-people {
+  list-style: none;
+  margin-top: var(--space-8);
 }
 
 .person-row {
-  padding: var(--space-12) var(--space-16);
-  border-bottom: 1px solid var(--separator);
+  padding: 0 var(--space-16) var(--space-16);
 }
 
-/* Only rendered when a heading would actually separate people — see
-   groupedPeople(). A single household never sees one. */
+/* Only rendered when a heading would tell this family from something else —
+   see headingsVisible(). A single household's card goes untitled. */
 .family-heading {
-  padding: var(--space-16) var(--space-16) var(--space-6);
+  padding: var(--space-12) var(--space-16) var(--space-4);
   font-size: var(--font-size-11);
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-}
-
-/* The first heading sits directly under the fixed title bar, where the
-   full leading above would read as a gap rather than a grouping. */
-.family-heading:first-child {
-  padding-top: var(--space-10);
 }
 
 .person-sentence {
@@ -263,8 +278,10 @@ body[data-tense="past"] {
 
 /* --- Manage panel --- */
 
+/* Matches #people-list's gutter, so a card sits the same distance from the
+   screen edge in Manage as it does on the main list. */
 #manage-panel {
-  padding: var(--space-16) var(--space-16) var(--space-32);
+  padding: var(--space-20) var(--space-12) var(--space-32);
 }
 
 /* A view of its own now rather than a header above the roster, so it needs no
@@ -274,10 +291,9 @@ body[data-tense="past"] {
   flex-direction: column;
 }
 
+/* Sits below the roster, so it keeps .cta-btn's own top margin as the gap. */
 #add-person-btn {
   width: 100%;
-  margin-top: 0;
-  margin-bottom: var(--space-20);
   text-align: center;
 }
 
@@ -351,28 +367,34 @@ body[data-tense="past"] {
   list-style: none;
 }
 
+/* Cards, headings and row insets are shared with the main list rather than
+   redefined here — the roster you edit should look like the one you read. The
+   row carries the horizontal padding, exactly as .person-row does, so the card
+   itself stays padding-free in both places. */
 .manage-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-8);
-  padding: var(--space-10) 0;
-  border-bottom: 1px solid var(--separator);
+  padding: 0 var(--space-16) var(--space-16);
 }
 
 .manage-row .manage-info {
   min-width: 0;
 }
 
+/* Same size and weight as .person-name on the main list. */
 .manage-row .manage-name {
-  font-size: var(--font-size-14);
+  font-size: var(--font-size-15);
   font-weight: 600;
+  color: var(--text);
 }
 
+/* The secondary line under a name, matching .person-birth. */
 .manage-row .manage-detail {
-  font-size: var(--font-size-11);
+  font-size: var(--font-size-12);
   color: var(--text-muted);
-  margin-top: var(--space-2);
+  margin-top: var(--space-4);
 }
 
 .manage-row .manage-actions {
@@ -388,6 +410,13 @@ body[data-tense="past"] {
   display: flex;
   gap: var(--space-12);
   margin-top: var(--space-20);
+}
+
+#app-version {
+  margin-top: var(--space-20);
+  text-align: center;
+  font-size: var(--font-size-11);
+  color: var(--text-muted);
 }
 
 #backup-text {

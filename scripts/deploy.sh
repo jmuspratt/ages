@@ -27,5 +27,16 @@ STAMP=$(date +%Y%m%d%H%M%S)
 sed -i '' "s/const CACHE = ['\"]people-dates-[^'\"]*['\"]/const CACHE = 'people-dates-${STAMP}'/" app/sw.js
 echo "SW cache version: people-dates-${STAMP}"
 
+# Sync the version shown in Manage with package.json. app/ ships without
+# package.json, so the constant in app.js is the only copy that reaches the
+# device — bumping package.json alone is enough, this propagates it.
+VERSION=$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' package.json | head -1)
+if [ -z "$VERSION" ]; then
+  echo "Error: could not read version from package.json"
+  exit 1
+fi
+sed -i '' "s/const VERSION = \"[^\"]*\"/const VERSION = \"${VERSION}\"/" app/app.js
+echo "App version: ${VERSION}"
+
 rsync -azP --delete app/ "$DEPLOY_PATH"
 echo "Deploy complete!"

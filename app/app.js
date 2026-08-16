@@ -1,3 +1,8 @@
+// Mirrors package.json, which isn't part of the deployed app/ directory — so
+// this constant is the only copy that reaches the device. scripts/deploy.sh
+// rewrites this line from package.json on every deploy; keep the shape it seds.
+const VERSION = "1.0.1";
+
 const STORAGE_KEY = "people_dates_data";
 const RANGE_MONTHS = 60; // slider reaches 5 years in each direction
 const CENTER = RANGE_MONTHS; // slider index that means "today"
@@ -281,25 +286,29 @@ function familyNames() {
   return names;
 }
 
-// A heading only earns its space when it separates people from someone else.
-// One family with everyone in it — the common single-household case — reads
-// better as the plain list it was before this existed.
+// Each family is a group, in oldest-member order. Anyone unassigned trails them
+// in a single nameless group, which renders bare — no heading, no card. The
+// card is what separates a family from the rest now, so the remainder needs no
+// label of its own to be legible as "everyone else".
 function groupedPeople() {
   const sorted = sortedPeople();
-  const names = familyNames();
   const loose = sorted.filter((person) => !familyOf(person));
 
-  if (names.length === 0 || (names.length === 1 && loose.length === 0)) {
-    return [{ name: "", people: sorted }];
-  }
-
-  const groups = names.map((name) => ({
+  const groups = familyNames().map((name) => ({
     name,
     people: sorted.filter((person) => familyOf(person) === name),
   }));
-  // Anyone unassigned trails the named groups, under no heading of their own.
   if (loose.length > 0) groups.push({ name: "", people: loose });
   return groups;
+}
+
+// A heading only earns its space when it tells one family from something else.
+// A lone family holding the whole roster is already evident from its card, so
+// naming it there would just repeat what the card says.
+function headingsVisible() {
+  const names = familyNames();
+  if (names.length > 1) return true;
+  return names.length === 1 && people.some((person) => !familyOf(person));
 }
 
 // --- Elements ---
@@ -315,7 +324,7 @@ const manageBtn = el("manage-btn");
 const manageCancelBtn = el("manage-cancel-btn");
 const timeBar = el("time-bar");
 const slider = el("time-slider");
-const appTitle = el("app-title");
+const dateHeading = el("date-heading");
 const dateLabel = el("date-label");
 const todayBtn = el("today-btn");
 const form = el("person-form");
@@ -339,12 +348,26 @@ function buildList() {
   peopleList.innerHTML = "";
   rowRefs = [];
 
+  const showHeadings = headingsVisible();
+
   for (const group of groupedPeople()) {
+    // A named family gets a card; the nameless remainder sits bare on the page.
+    // Rows nest in their own <ul> so an <li> never contains another directly.
+    let container = peopleList;
     if (group.name) {
-      const heading = document.createElement("li");
-      heading.className = "family-heading";
-      heading.textContent = group.name;
-      peopleList.append(heading);
+      const card = document.createElement("li");
+      card.className = "family-card";
+      if (showHeadings) {
+        const heading = document.createElement("div");
+        heading.className = "family-heading";
+        heading.textContent = group.name;
+        card.append(heading);
+      }
+      const inner = document.createElement("ul");
+      inner.className = "family-people";
+      card.append(inner);
+      peopleList.append(card);
+      container = inner;
     }
 
     for (const person of group.people) {
@@ -378,7 +401,7 @@ function buildList() {
       birth.textContent = `Born ${formatLongDate(parseDate(person.birthdate))}`;
 
       li.append(sentence, birth);
-      peopleList.append(li);
+      container.append(li);
       rowRefs.push({ person, lead, value, join, gradeLead, gradeValue });
     }
   }
@@ -400,7 +423,7 @@ function updateValues(date, tense) {
 // active date, so the bar above the slider only needs the month and year.
 function paint(date) {
   const tense = tenseFor(date);
-  appTitle.textContent = headingFor(date, tense);
+  dateHeading.textContent = headingFor(date, tense);
   // The heading and every row's tint both resolve from this one attribute, so
   // scrubbing the slider still touches only text nodes plus a single dataset
   // write. It lives on <body> because the title bar is outside the list.
@@ -418,6 +441,8 @@ function render() {
   const managing = !managePanel.hidden;
 
   onboarding.hidden = hasPeople || managing;
+  // The heading describes the list, so it goes wherever the list goes.
+  dateHeading.hidden = managing || !hasPeople;
   peopleList.hidden = managing;
   timeBar.hidden = managing || !hasPeople;
 
@@ -563,51 +588,74 @@ function openForm(person) {
 
 function buildManageList() {
   manageList.innerHTML = "";
-  for (const person of sortedPeople()) {
-    const li = document.createElement("li");
-    li.className = "manage-row";
+  // Same grouping as the main list, so the roster you edit matches the one you
+  // read — including the rule that suppresses headings for a single household.
+  const showHeadings = headingsVisible();
 
-    const info = document.createElement("div");
-    info.className = "manage-info";
-    const name = document.createElement("div");
-    name.className = "manage-name";
-    name.textContent = person.name;
-    const detail = document.createElement("div");
-    detail.className = "manage-detail";
-    const bits = [
-      formatShortDate(parseDate(person.birthdate)),
-      `${gradeName(person.anchorGrade)} in ${schoolYearLabel(person.anchorYear)}`,
-    ];
-    // Shown here even when the list suppresses headings, so an assignment is
-    // never invisible.
-    const family = familyOf(person);
-    if (family) bits.push(family);
-    detail.textContent = bits.join(" · ");
-    info.append(name, detail);
+  for (const group of groupedPeople()) {
+    let container = manageList;
+    if (group.name) {
+      const card = document.createElement("li");
+      card.className = "family-card";
+      if (showHeadings) {
+        const heading = document.createElement("div");
+        heading.className = "family-heading";
+        heading.textContent = group.name;
+        card.append(heading);
+      }
+      const inner = document.createElement("ul");
+      inner.className = "family-people";
+      card.append(inner);
+      manageList.append(card);
+      container = inner;
+    }
 
-    const actions = document.createElement("div");
-    actions.className = "manage-actions";
-    const editBtn = document.createElement("button");
-    editBtn.type = "button";
-    editBtn.textContent = "Edit";
-    editBtn.addEventListener("click", () => openForm(person));
-    const removeBtn = document.createElement("button");
-    removeBtn.type = "button";
-    removeBtn.className = "remove-btn";
-    removeBtn.textContent = "Remove";
-    removeBtn.addEventListener("click", () => {
-      if (!confirm(`Remove ${person.name}?`)) return;
-      people = people.filter((p) => p.id !== person.id);
-      savePeople();
-      // They may have been the last member of their family, and the picker is
-      // rebuilt from the roster.
-      refreshFamilySelect();
-      buildManageList();
-    });
-    actions.append(editBtn, removeBtn);
+    for (const person of group.people) {
+      const li = document.createElement("li");
+      li.className = "manage-row";
 
-    li.append(info, actions);
-    manageList.append(li);
+      const info = document.createElement("div");
+      info.className = "manage-info";
+      const name = document.createElement("div");
+      name.className = "manage-name";
+      name.textContent = person.name;
+      const detail = document.createElement("div");
+      detail.className = "manage-detail";
+      const bits = [
+        formatShortDate(parseDate(person.birthdate)),
+        `${gradeName(person.anchorGrade)} in ${schoolYearLabel(person.anchorYear)}`,
+      ];
+      // Only when no heading is carrying it — otherwise the family would be
+      // stated twice, immediately above the row and again inside it.
+      const family = familyOf(person);
+      if (!showHeadings && family) bits.push(family);
+      detail.textContent = bits.join(" · ");
+      info.append(name, detail);
+
+      const actions = document.createElement("div");
+      actions.className = "manage-actions";
+      const editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.textContent = "Edit";
+      editBtn.addEventListener("click", () => openForm(person));
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "remove-btn";
+      removeBtn.textContent = "Remove";
+      removeBtn.addEventListener("click", () => {
+        if (!confirm(`Remove ${person.name}?`)) return;
+        people = people.filter((p) => p.id !== person.id);
+        savePeople();
+        // They may have been the last member of their family, and the picker is
+        // rebuilt from the roster.
+        refreshFamilySelect();
+        buildManageList();
+      });
+      actions.append(editBtn, removeBtn);
+
+      li.append(info, actions);
+      container.append(li);
+    }
   }
 }
 
@@ -730,6 +778,7 @@ todayBtn.addEventListener("click", () => {
 // --- Boot ---
 
 populateSelects();
+el("app-version").textContent = `v${VERSION}`;
 // Only worth warning about before there's anything to lose.
 if (people.length === 0 && !isStandalone()) {
   document.querySelector(".a2hs-hint").hidden = false;

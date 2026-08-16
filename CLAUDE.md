@@ -21,14 +21,15 @@ A single-page PWA that shows a set of kids' ages and American K-12 grade levels 
 - **No centre snap-detent on the slider.** A detent wide enough to feel would make ±1 month unreachable. The **Today** button does that job instead.
 - **Summer shows "Rising Nth".** June–August has no current grade. Reporting the grade they're rising into matches how people actually speak in July, and avoids the awkward "she's in 3rd" when 3rd ended in June.
 - **Families are derived, never stored.** A family is only the set of distinct `person.family` strings, read back by `familyNames()`. That's precisely why an empty group deletes itself — there's no record to delete. Don't add a families array to hang ordering or colours off; it would turn free auto-delete into a cleanup step you have to maintain.
-- **Family headings hide when they'd say nothing.** `groupedPeople()` falls back to the flat list unless a heading actually separates people — two families, or one family plus someone unassigned. A single household sees no heading at all, the same instinct as the Today pill hiding at centre.
+- **Family headings hide when they'd say nothing.** `groupedPeople()` falls back to the flat list unless a heading actually separates people — two families, or one family plus someone unassigned. A single household sees no heading at all — its card already says what the label would. Unassigned people get neither heading nor card; the card is what marks a family off, so the remainder reads as "everyone else" unaided. `headingsVisible()` is deliberately separate from `groupedPeople()`: grouping always keeps a family as its own group so it always gets a card, and only the title is conditional.
 
 ## Frontend details
 
 ### HTML structure
 
 Single `index.html` with:
-- A fixed top bar: the active date and a Manage button
+- A fixed top bar: the app's name ("The Ages App") and a Manage button
+- A date heading in the content area, scrolling with the list rather than pinned
 - A scrollable list of people
 - A hidden Manage panel, itself two mutually exclusive views
 - A fixed bottom bar: the target date and the slider
@@ -37,7 +38,11 @@ No hamburger menus, no navbars, no routing.
 
 ### The Manage panel's two views
 
-`#manage-view` (Add button, roster, Export/Import) and `#person-form` are never on screen together. Opening Manage lands on the roster — the form is not exposed until you tap **Add someone…** — and opening the form hides the roster, so editing one person doesn't leave the others sitting behind it. `showManageView()` and `openForm(person)` are the only two transitions; `openForm()` with no argument means adding.
+`#manage-view` (roster, Add button, Export/Import, version) and `#person-form` are never on screen together.
+
+The roster carries the same family headings as the main list, from the same `groupedPeople()` — so the list you edit matches the list you read, including the suppression rule for a single household.
+
+It also shares the *styling*, not just the structure: `.family-card`, `.family-heading` and `.family-people` are used unmodified in both places, `#manage-panel`'s gutter matches `#people-list`'s, and `.manage-row` mirrors `.person-row`'s padding while `.manage-name` / `.manage-detail` mirror `.person-name` / `.person-birth`. There are deliberately **no** `#manage-list .family-*` overrides — the two screens drifted apart once already because the card carried its padding in one place and the row carried it in the other. If you restyle a card, restyle it once. When headings are showing, the family is left out of each row's detail line; it would otherwise be stated twice, immediately above the row and again inside it. When they're suppressed, the detail line is the only place an assignment appears, so it goes back in. Opening Manage lands on the roster — the form is not exposed until you tap **Add someone…** — and opening the form hides the roster, so editing one person doesn't leave the others sitting behind it. `showManageView()` and `openForm(person)` are the only two transitions; `openForm()` with no argument means adding.
 
 This is deliberately a view swap and not a modal — no overlay, no backdrop, no z-index, no scroll lock — which is how it satisfies "no modals, drawers, or overlays" while still reading as a sheet on a phone. The title bar's **Done** hides while the form is up, so Cancel and Save are the only exits and there's never a third ambiguous one.
 
@@ -68,7 +73,7 @@ The sentence body is a medium grey. The two value phrases — the age and the gr
 
 The **name** is the exception in the other direction: it holds `--text` at full contrast no matter where the slider is, because whose row this is doesn't change with the date. So each row is name + two bold facts, joined by grey connective tissue.
 
-The top bar's heading takes the same tint, so "On September 1, 2027…" is the same green as the ages underneath it and the whole screen reads as one statement about one moment. It's measured against `--bar-bg` rather than `--bg`, though the two are currently identical in both schemes.
+`#date-heading` takes the same tint, so "On September 1, 2027…" is the same green as the ages underneath it and the screen reads as one statement about one moment. It lives in the content area, not the title bar, so it's measured against `--bg` like everything else in the list. The title bar holds only the app's name, in `--text`, deliberately untinted — it isn't reporting a moment.
 
 The tint resolves from a single `data-tense` attribute that `paint()` writes on `<body>`, with three `body[data-tense="…"]` rules rebinding one `--value` custom property that both `#app-title` and `.person-value` read. It has to be `<body>` and not `#people-list`, because the fixed title bar is a sibling of the list, not inside it. That's deliberate: scrubbing the slider must not restyle rows individually, so a drag stays one attribute write plus the cached text nodes.
 
@@ -104,7 +109,8 @@ The service worker cache-firsts the entire app shell. There are no dynamic reque
 - All colors, font sizes, and spacing as `:root` custom properties, with a `prefers-color-scheme: dark` block that redefines only the colors
 - Form inputs must be `--font-size-zoom-safe` (16px) or iOS zooms the viewport on focus
 - Safe area insets on both fixed bars: `env(safe-area-inset-top)` / `env(safe-area-inset-bottom)`
-- Edge-to-edge list, no max-width container
+- Cards, not rules. `--bg` is the page, `--card` the surface a family sits on (white in light, pure black in dark). There are no horizontal rules anywhere in either list — the card edge does that work, and unassigned rows need no separator at all. A gutter on `#people-list` replaced the old edge-to-edge treatment; rows inside a card and bare rows outside one are padded to the same text inset so the left edge never jogs.
+- Contrast is measured against `--bg`, not `--card`. Ungrouped rows sit directly on the page, which is the tighter of the two surfaces, so tuning to it means everything passes on a card for free. This is why `--value-future` and `--value-past` are darker than a pure white background alone would require.
 - No visible scrollbars
 
 ### Storage
@@ -115,7 +121,10 @@ Warn about iOS's split localStorage (Safari tab vs. installed app) **only** whil
 
 ## Deploying
 
-`npm run deploy` bumps the `CACHE` constant in `app/sw.js` to a fresh timestamp before rsyncing. If you change how that constant is written, update the `sed` in `scripts/deploy.sh` to match — a cache-first service worker with a stale version serves the old app forever.
+`npm run deploy` rewrites two constants in place before rsyncing:
+
+- `CACHE` in `app/sw.js`, to a fresh timestamp. If you change how that constant is written, update the `sed` in `scripts/deploy.sh` to match — a cache-first service worker with a stale version serves the old app forever.
+- `VERSION` in `app/app.js`, from `package.json`. Only `app/` is deployed, so `package.json` never reaches the device and the constant is the only copy the app can show. Bumping `package.json` is enough; deploy propagates it. The `sed` matches `const VERSION = "…"` with double quotes, so keep that shape.
 
 ## Things to avoid
 

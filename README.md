@@ -55,7 +55,9 @@ Field details:
 
 There is no families list. A family is nothing but the set of distinct `family` strings across the roster, derived on read by `familyNames()` — which is the whole reason a group disappears the moment its last member leaves or is reassigned. There is no cleanup step because there is no record to clean up. Don't promote families to stored entities to add ordering or colours; the auto-delete behaviour is a consequence of them not existing.
 
-Grouping is deliberately self-effacing. `groupedPeople()` returns a single unnamed group — the flat list, exactly as before — unless a heading would actually separate somebody: two or more families, or one family alongside an unassigned person. A single household therefore never sees a heading, the same way the Today pill hides at centre. Unassigned people trail the named groups under no heading of their own.
+Grouping is deliberately self-effacing. `groupedPeople()` returns a single unnamed group — the flat list, exactly as before — unless a heading would actually separate somebody: two or more families, or one family alongside an unassigned person. A single household therefore never sees a heading — its card already says what the label would, the same instinct as the Today pill hiding at centre. Anyone unassigned trails the named groups with no heading and no card at all: the card is what marks a family off, so the remainder reads as "everyone else" without needing to be told.
+
+Each family renders as a rounded card on the page background; `headingsVisible()` decides only whether that card gets a title, and is separate from `groupedPeople()`, which always keeps families as their own groups.
 
 Names join case-insensitively: typing "the smiths" when "The Smiths" exists assigns the existing spelling rather than opening a near-identical second group. Renaming a family means editing each member — acceptable while rosters are one household.
 
@@ -102,12 +104,12 @@ The sentence sits in a medium grey. The name holds full contrast throughout — 
 
 | Slider | Age & grade phrases | Light | Dark |
 | --- | --- | --- | --- |
-| Today | near-black | `#1a1a1a` 17.40:1 | `#e8e8e8` 14.20:1 |
-| Ahead | green | `#1a7f37` 5.08:1 | `#3fb950` 6.85:1 |
-| Behind | orange | `#c04a00` 4.98:1 | `#d29922` 6.90:1 |
-| — | sentence grey | `#666` 5.74:1 | `#9a9a9a` 6.19:1 |
+| Today | near-black | `#1a1a1a` 15.00:1 | `#e8e8e8` 12.67:1 |
+| Ahead | green | `#15703a` 5.31:1 | `#3fb950` 6.11:1 |
+| Behind | orange | `#b34700` 4.74:1 | `#d29922` 6.15:1 |
+| — | sentence grey | `#666` 4.95:1 | `#9a9a9a` 5.52:1 |
 
-Every value clears WCAG AA (4.5:1 for 15px text) against its own background, measured rather than estimated. Colour is deliberately redundant: the top bar already states the date and the verb already shifts between "is", "will be" and "was", so nobody depends on hue alone.
+Every value clears WCAG AA (4.5:1 for 15px text), measured rather than estimated — and measured against the **page**, not the card. Family rows sit on a white (or pure black) card where contrast is easy; unassigned rows sit directly on the page, which is the tighter constraint and therefore the one the palette is tuned to. Anything that passes on the page passes on a card by definition. Colour is deliberately redundant: the top bar already states the date and the verb already shifts between "is", "will be" and "was", so nobody depends on hue alone.
 
 The heading in the top bar takes the same colour, so the date you're looking at and the ages it produces read as one statement rather than two.
 
@@ -123,13 +125,13 @@ A single `<input type="range">` pinned to the bottom of the screen, in thumb rea
 - **Every other stop** is the 1st of that month. Grade transitions always land on September 1, so month resolution is all the precision the app needs, and it keeps a full decade draggable across a phone-width track.
 - A **Today** button appears next to the date whenever the slider is off-centre. There's deliberately no centre snap-detent — it would make ±1 month unreachable.
 
-The active date is stated in full in the **top bar** — "Today is August 16, 2026", or "On September 1, 2027…" once you start dragging. Since that heading carries the date, the slider bar itself stays small: just the month and year in muted text.
+The active date is stated in full in a heading at the top of the **content area** — "Today is August 16, 2026", or "On September 1, 2027…" once you start dragging. It scrolls with the list rather than being pinned, and takes the tense colour along with the ages below it. The fixed top bar holds only the app's name. Since that heading carries the date, the slider bar itself stays small: just the month and year in muted text.
 
 Dragging only rewrites two text nodes per person; the list DOM is built once and cached in `rowRefs`.
 
 ### Manage
 
-The panel is two views that are never on screen at once. It opens on the roster — a single **Add someone…** button, the list of people, and Export/Import — so no empty form greets you. Tapping Add, or Edit on a row, swaps the roster out for the form, meaning editing one person never leaves the others visible underneath. `showManageView()` and `openForm(person)` are the only transitions.
+The panel is two views that are never on screen at once. It opens on the roster — the list of people, an **Add someone…** button beneath it, then Export/Import and the version — so no empty form greets you. The roster carries the same family headings as the main list, from the same `groupedPeople()`, so what you edit matches what you read; when headings are showing, the family is dropped from each row's detail line rather than being stated twice. Tapping Add, or Edit on a row, swaps the roster out for the form, meaning editing one person never leaves the others visible underneath. `showManageView()` and `openForm(person)` are the only transitions.
 
 It's a view swap rather than a modal: no overlay, no backdrop, no scroll lock. On a phone it reads as a sheet regardless, and it keeps the app free of the layered UI the design rules out. While the form is up, the title bar's Done hides so Cancel and Save are the only ways out.
 

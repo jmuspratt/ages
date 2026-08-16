@@ -16,13 +16,14 @@
 </head>
 <body>
   <header id="title-bar">
-    <div id="app-title"></div>
+    <div id="app-title">The Ages App</div>
     <div id="title-actions">
       <button id="manage-cancel-btn" hidden>Done</button>
       <button id="manage-btn">Manage</button>
     </div>
   </header>
 
+  <div id="date-heading"></div>
   <ul id="people-list"></ul>
 
   <div id="onboarding" hidden>
@@ -33,15 +34,17 @@
 
   <div id="manage-panel" hidden>
     <div id="manage-view">
-      <button id="add-person-btn" class="cta-btn">Add someone&hellip;</button>
-
       <ul id="manage-list"></ul>
+
+      <button id="add-person-btn" class="cta-btn">Add someone&hellip;</button>
 
       <div id="backup-row">
         <button id="export-btn">Export</button>
         <button id="import-btn">Import</button>
       </div>
       <textarea id="backup-text" spellcheck="false" hidden></textarea>
+
+      <div id="app-version"></div>
     </div>
 
     <form id="person-form" autocomplete="off" hidden>

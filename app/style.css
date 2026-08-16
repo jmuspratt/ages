@@ -16,7 +16,10 @@
   --sentence: #666; /* 5.74:1 */
   --value-present: #1a1a1a; /* today — 17.40:1 */
   --value-future: #1a7f37; /* ahead of today — 5.08:1 */
-  --value-past: #8a6100; /* behind today — 5.54:1 */
+  /* Orange, not brown: on white the ratio caps how bright an orange can be, and
+     dropping the lightness far enough to pass drifts it toward brown. Hue 23°
+     at full saturation is the compromise that still reads orange. */
+  --value-past: #c04a00; /* behind today — 4.98:1 */
   --grade-out: #999; /* not-in-school / graduated: present but de-emphasized */
   --danger: #a05040;
   --track: #dcdcdc;
@@ -140,6 +143,9 @@ button {
 #app-title {
   font-size: var(--font-size-15);
   font-weight: 600;
+  /* Same tense colour as the age and grade phrases below, so the heading and
+     the rows read as one statement about the same moment. */
+  color: var(--value, var(--value-present));
   /* Holds a full date, so it has to yield before the Manage button does */
   min-width: 0;
   overflow: hidden;
@@ -195,18 +201,19 @@ button {
   color: var(--text);
 }
 
-/* The age and grade phrases carry the slider's tense as colour. The tint is
-   resolved once on the list, so scrubbing sets a single attribute rather than
-   restyling every row. */
-#people-list[data-tense="present"] {
+/* The heading and the age/grade phrases carry the slider's tense as colour.
+   The tint is resolved once on <body> — which the fixed title bar is inside and
+   the list is too — so scrubbing sets a single attribute rather than restyling
+   anything individually. */
+body[data-tense="present"] {
   --value: var(--value-present);
 }
 
-#people-list[data-tense="future"] {
+body[data-tense="future"] {
   --value: var(--value-future);
 }
 
-#people-list[data-tense="past"] {
+body[data-tense="past"] {
   --value: var(--value-past);
 }
 

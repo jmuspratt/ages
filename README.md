@@ -104,12 +104,14 @@ The sentence sits in a medium grey. The name holds full contrast throughout — 
 | --- | --- | --- | --- |
 | Today | near-black | `#1a1a1a` 17.40:1 | `#e8e8e8` 14.20:1 |
 | Ahead | green | `#1a7f37` 5.08:1 | `#3fb950` 6.85:1 |
-| Behind | amber | `#8a6100` 5.54:1 | `#d29922` 6.90:1 |
+| Behind | orange | `#c04a00` 4.98:1 | `#d29922` 6.90:1 |
 | — | sentence grey | `#666` 5.74:1 | `#9a9a9a` 6.19:1 |
 
 Every value clears WCAG AA (4.5:1 for 15px text) against its own background, measured rather than estimated. Colour is deliberately redundant: the top bar already states the date and the verb already shifts between "is", "will be" and "was", so nobody depends on hue alone.
 
-The tint comes from one `data-tense` attribute written on `#people-list` by `paint()`, rebinding a single `--value` property. Dragging the slider therefore never restyles rows one by one.
+The heading in the top bar takes the same colour, so the date you're looking at and the ages it produces read as one statement rather than two.
+
+The tint comes from one `data-tense` attribute written on `<body>` by `paint()`, rebinding a single `--value` property that both the heading and the rows read. It sits on `<body>` because the fixed title bar isn't inside the list. Dragging the slider therefore never restyles anything one by one.
 
 Out-of-range clauses are the exception — they stay `--grade-out` and take no tint, because "out of high school" isn't reporting a moment in time.
 

@@ -401,9 +401,10 @@ function updateValues(date, tense) {
 function paint(date) {
   const tense = tenseFor(date);
   appTitle.textContent = headingFor(date, tense);
-  // Every row's tint resolves from this one attribute, so scrubbing the slider
-  // still touches only text nodes plus a single dataset write.
-  peopleList.dataset.tense = tense;
+  // The heading and every row's tint both resolve from this one attribute, so
+  // scrubbing the slider still touches only text nodes plus a single dataset
+  // write. It lives on <body> because the title bar is outside the list.
+  document.body.dataset.tense = tense;
   dateLabel.textContent =
     tense === "present"
       ? "Today"

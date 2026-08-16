@@ -64,11 +64,13 @@ Rules:
 
 ### Colour-coding the slider's tense
 
-The sentence body is a medium grey. The two value phrases — the age and the grade — lift out of it in **600 weight** and in a colour that reports where the slider is: near-black at today, green ahead, amber behind. Colour is redundant here, never the only signal; the heading already says the date, the verb already shifts tense, and the weight already separates the facts from the connecting words, so hue reads as reinforcement rather than the sole carrier of meaning.
+The sentence body is a medium grey. The two value phrases — the age and the grade — lift out of it in **600 weight** and in a colour that reports where the slider is: near-black at today, green ahead, orange behind. Colour is redundant here, never the only signal; the heading already says the date, the verb already shifts tense, and the weight already separates the facts from the connecting words, so hue reads as reinforcement rather than the sole carrier of meaning.
 
 The **name** is the exception in the other direction: it holds `--text` at full contrast no matter where the slider is, because whose row this is doesn't change with the date. So each row is name + two bold facts, joined by grey connective tissue.
 
-The tint resolves from a single `data-tense` attribute that `paint()` writes on `#people-list`, with the three `#people-list[data-tense="…"]` rules rebinding one `--value` custom property. That's deliberate: scrubbing the slider must not restyle rows individually, so a drag stays one attribute write plus the cached text nodes.
+The top bar's heading takes the same tint, so "On September 1, 2027…" is the same green as the ages underneath it and the whole screen reads as one statement about one moment. It's measured against `--bar-bg` rather than `--bg`, though the two are currently identical in both schemes.
+
+The tint resolves from a single `data-tense` attribute that `paint()` writes on `<body>`, with three `body[data-tense="…"]` rules rebinding one `--value` custom property that both `#app-title` and `.person-value` read. It has to be `<body>` and not `#people-list`, because the fixed title bar is a sibling of the list, not inside it. That's deliberate: scrubbing the slider must not restyle rows individually, so a drag stays one attribute write plus the cached text nodes.
 
 Out-of-range grade clauses keep `--grade-out` and are **not** tinted — `.person-value.out-of-range` outranks `.person-value`. They aren't reporting a moment in time, so giving them a tense colour would say something untrue.
 

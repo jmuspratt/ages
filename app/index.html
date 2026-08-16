@@ -32,9 +32,20 @@
   </div>
 
   <div id="manage-panel" hidden>
-    <form id="person-form" autocomplete="off">
+    <div id="manage-view">
+      <button id="add-person-btn" class="cta-btn">Add someone&hellip;</button>
+
+      <ul id="manage-list"></ul>
+
+      <div id="backup-row">
+        <button id="export-btn">Export</button>
+        <button id="import-btn">Import</button>
+      </div>
+      <textarea id="backup-text" spellcheck="false" hidden></textarea>
+    </div>
+
+    <form id="person-form" autocomplete="off" hidden>
       <div id="form-heading">Add someone</div>
-      <input type="hidden" id="person-id">
       <label for="person-name">Name</label>
       <input id="person-name" type="text" placeholder="Ida" required>
       <label for="person-birthdate">Birthday</label>
@@ -51,18 +62,10 @@
                aria-label="New family name" hidden>
       </div>
       <div id="form-actions">
-        <button type="button" id="form-cancel-btn" hidden>Cancel</button>
+        <button type="button" id="form-cancel-btn">Cancel</button>
         <button type="submit" id="form-save-btn" class="cta-btn">Save</button>
       </div>
     </form>
-
-    <ul id="manage-list"></ul>
-
-    <div id="backup-row">
-      <button id="export-btn">Export</button>
-      <button id="import-btn">Import</button>
-    </div>
-    <textarea id="backup-text" spellcheck="false" hidden></textarea>
   </div>
 
   <footer id="time-bar">

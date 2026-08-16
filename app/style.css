@@ -11,7 +11,12 @@
   --field-bg: #ffffff;
   --accent: #007aff;
   --accent-text: #ffffff; /* text against an --accent background; same in both themes */
-  --grade: #1a1a1a;
+  /* The sentence body; the age and grade phrases lift out of it in --value-*.
+     Ratios are against --bg, for 15px text, so the bar is AA 4.5:1. */
+  --sentence: #666; /* 5.74:1 */
+  --value-present: #1a1a1a; /* today — 17.40:1 */
+  --value-future: #1a7f37; /* ahead of today — 5.08:1 */
+  --value-past: #8a6100; /* behind today — 5.54:1 */
   --grade-out: #999; /* not-in-school / graduated: present but de-emphasized */
   --danger: #a05040;
   --track: #dcdcdc;
@@ -57,7 +62,10 @@
     --field-border: #444;
     --field-bg: #222;
     --accent: #0a84ff;
-    --grade: #e8e8e8;
+    --sentence: #9a9a9a; /* 6.19:1 */
+    --value-present: #e8e8e8; /* 14.20:1 */
+    --value-future: #3fb950; /* 6.85:1 */
+    --value-past: #d29922; /* 6.90:1 */
     --grade-out: #777;
     --danger: #c07060;
     --track: #3a3a3a;
@@ -68,6 +76,13 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+}
+
+/* Panels are toggled with the `hidden` attribute, but the UA's
+   `[hidden] { display: none }` loses to any author `display` rule — and several
+   of these are flex containers. Without this, hiding the form leaves it up. */
+[hidden] {
+  display: none !important;
 }
 
 html,
@@ -168,19 +183,41 @@ button {
 .person-sentence {
   font-size: var(--font-size-15);
   line-height: 1.35;
+  color: var(--sentence);
   /* Keep "8th grade" and "isn't born" from breaking across lines mid-phrase */
   text-wrap: pretty;
 }
 
+/* Full contrast regardless of the slider — whose row this is doesn't change
+   with the date, so it shouldn't carry the tense colour. */
 .person-name {
   font-weight: 600;
+  color: var(--text);
 }
 
-.person-grade {
-  color: var(--grade);
+/* The age and grade phrases carry the slider's tense as colour. The tint is
+   resolved once on the list, so scrubbing sets a single attribute rather than
+   restyling every row. */
+#people-list[data-tense="present"] {
+  --value: var(--value-present);
 }
 
-.person-grade.out-of-range {
+#people-list[data-tense="future"] {
+  --value: var(--value-future);
+}
+
+#people-list[data-tense="past"] {
+  --value: var(--value-past);
+}
+
+.person-value {
+  font-weight: 600;
+  color: var(--value, var(--value-present));
+}
+
+/* Outside K-12 there's no grade to report, so the clause stays de-emphasized
+   instead of taking the tense colour — it isn't reporting a moment in time. */
+.person-value.out-of-range {
   color: var(--grade-out);
 }
 
@@ -223,11 +260,18 @@ button {
   padding: var(--space-16) var(--space-16) var(--space-32);
 }
 
+/* A view of its own now rather than a header above the roster, so it needs no
+   rule dividing it from anything. */
 #person-form {
   display: flex;
   flex-direction: column;
-  padding-bottom: var(--space-20);
-  border-bottom: 1px solid var(--separator);
+}
+
+#add-person-btn {
+  width: 100%;
+  margin-top: 0;
+  margin-bottom: var(--space-20);
+  text-align: center;
 }
 
 #form-heading {

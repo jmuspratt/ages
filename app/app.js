@@ -134,22 +134,28 @@ function gradeClauseFor(person, date) {
   const year = summer ? date.getFullYear() : schoolYearOf(date);
   const grade = person.anchorGrade + (year - person.anchorYear);
 
-  if (grade < PRE_K) return { text: "not in school yet", outOfRange: true };
+  // Split at the tint boundary: `lead` stays in the sentence grey, `value`
+  // takes the tense colour. An out-of-range clause names no grade, so the whole
+  // phrase rides in `value` and is muted by its own class instead.
+  if (grade < PRE_K) {
+    return { lead: "", value: "not in school yet", outOfRange: true };
+  }
   // "out of high school" rather than "has graduated" so the clause carries no
   // tense of its own — only the "be" verb ahead of it changes with the slider.
   if (grade === LAST_GRADE + 1) {
-    return { text: "out of high school", outOfRange: true };
+    return { lead: "", value: "out of high school", outOfRange: true };
   }
   if (grade > LAST_GRADE + 1) {
     return {
-      text: `${pluralize(grade - LAST_GRADE, "year")} past high school`,
+      lead: "",
+      value: `${pluralize(grade - LAST_GRADE, "year")} past high school`,
       outOfRange: true,
     };
   }
 
-  const noun = gradeNoun(grade);
   return {
-    text: summer ? `going into ${noun}` : `in ${noun}`,
+    lead: summer ? "going into " : "in ",
+    value: gradeNoun(grade),
     outOfRange: false,
   };
 }
@@ -179,8 +185,12 @@ function tenseFor(date) {
   return date > today ? "future" : "past";
 }
 
-// Splits into the two spans the row renders, so the grade half can be muted
-// on its own when it falls outside K-12. The trailing period is static markup.
+// Splits into the five spans the row renders. `value` and `gradeValue` are the
+// phrases that take the tense colour; `lead`, `join` and `gradeLead` are the
+// connecting words that stay in the sentence grey, which is the only reason the
+// verb can be tinted differently from the age it introduces. It also keeps the
+// grade half muteable on its own when it falls outside K-12. The trailing
+// period is static markup.
 function sentenceFor(person, date, tense) {
   const birth = parseDate(person.birthdate);
 
@@ -190,8 +200,11 @@ function sentenceFor(person, date, tense) {
     if (years > 0) parts.push(pluralize(years, "year"));
     if (months > 0 || years === 0) parts.push(pluralize(months, "month"));
     return {
-      age: ` ${UNBORN_VERB[tense]} ${parts.join(", ")}`,
-      grade: "",
+      lead: ` ${UNBORN_VERB[tense]} `,
+      value: parts.join(", "),
+      join: "",
+      gradeLead: "",
+      gradeValue: "",
       outOfRange: true,
     };
   }
@@ -199,8 +212,11 @@ function sentenceFor(person, date, tense) {
   const { years, months } = diffYearsMonths(birth, date);
   const grade = gradeClauseFor(person, date);
   return {
-    age: ` ${BE_VERB[tense]} ${agePhrase(years, months)} and `,
-    grade: grade.text,
+    lead: ` ${BE_VERB[tense]} `,
+    value: agePhrase(years, months),
+    join: " and ",
+    gradeLead: grade.lead,
+    gradeValue: grade.value,
     outOfRange: grade.outOfRange,
   };
 }
@@ -293,6 +309,7 @@ const el = (id) => document.getElementById(id);
 const peopleList = el("people-list");
 const onboarding = el("onboarding");
 const managePanel = el("manage-panel");
+const manageView = el("manage-view");
 const manageList = el("manage-list");
 const manageBtn = el("manage-btn");
 const manageCancelBtn = el("manage-cancel-btn");
@@ -339,10 +356,22 @@ function buildList() {
       const name = document.createElement("span");
       name.className = "person-name";
       name.textContent = person.name;
-      const age = document.createElement("span");
-      const grade = document.createElement("span");
-      grade.className = "person-grade";
-      sentence.append(name, age, grade, document.createTextNode("."));
+      const lead = document.createElement("span");
+      const value = document.createElement("span");
+      value.className = "person-value";
+      const join = document.createElement("span");
+      const gradeLead = document.createElement("span");
+      const gradeValue = document.createElement("span");
+      gradeValue.className = "person-value";
+      sentence.append(
+        name,
+        lead,
+        value,
+        join,
+        gradeLead,
+        gradeValue,
+        document.createTextNode("."),
+      );
 
       const birth = document.createElement("p");
       birth.className = "person-birth";
@@ -350,17 +379,20 @@ function buildList() {
 
       li.append(sentence, birth);
       peopleList.append(li);
-      rowRefs.push({ person, age, grade });
+      rowRefs.push({ person, lead, value, join, gradeLead, gradeValue });
     }
   }
 }
 
 function updateValues(date, tense) {
-  for (const { person, age, grade } of rowRefs) {
-    const parts = sentenceFor(person, date, tense);
-    age.textContent = parts.age;
-    grade.textContent = parts.grade;
-    grade.classList.toggle("out-of-range", parts.outOfRange);
+  for (const row of rowRefs) {
+    const parts = sentenceFor(row.person, date, tense);
+    row.lead.textContent = parts.lead;
+    row.value.textContent = parts.value;
+    row.join.textContent = parts.join;
+    row.gradeLead.textContent = parts.gradeLead;
+    row.gradeValue.textContent = parts.gradeValue;
+    row.gradeValue.classList.toggle("out-of-range", parts.outOfRange);
   }
 }
 
@@ -369,6 +401,9 @@ function updateValues(date, tense) {
 function paint(date) {
   const tense = tenseFor(date);
   appTitle.textContent = headingFor(date, tense);
+  // Every row's tint resolves from this one attribute, so scrubbing the slider
+  // still touches only text nodes plus a single dataset write.
+  peopleList.dataset.tense = tense;
   dateLabel.textContent =
     tense === "present"
       ? "Today"
@@ -476,31 +511,52 @@ function chosenFamily() {
   return existing || family;
 }
 
-function resetForm() {
+// Manage is two mutually exclusive views: the roster, and the add/edit form.
+// Only ever one on screen — so opening Manage doesn't present an empty form,
+// and editing one person doesn't leave the others sitting underneath.
+
+function showManageView() {
   editingId = null;
-  form.reset();
-  populateSelects();
-  formHeading.textContent = "Add someone";
-  formCancelBtn.hidden = true;
+  form.hidden = true;
+  manageView.hidden = false;
+  manageCancelBtn.hidden = false;
+  buildManageList();
 }
 
-function startEdit(person) {
-  editingId = person.id;
-  nameInput.value = person.name;
-  birthdateInput.value = person.birthdate;
-  // An anchor year outside the default window (an old record, or someone
-  // entered far in advance) still has to be selectable.
-  if (!anchorYearSelect.querySelector(`option[value="${person.anchorYear}"]`)) {
-    const opt = document.createElement("option");
-    opt.value = String(person.anchorYear);
-    opt.textContent = schoolYearLabel(person.anchorYear);
-    anchorYearSelect.prepend(opt);
+// `person` omitted means adding.
+function openForm(person) {
+  form.reset();
+  populateSelects();
+
+  if (person) {
+    editingId = person.id;
+    nameInput.value = person.name;
+    birthdateInput.value = person.birthdate;
+    // An anchor year outside the default window (an old record, or someone
+    // entered far in advance) still has to be selectable.
+    if (
+      !anchorYearSelect.querySelector(`option[value="${person.anchorYear}"]`)
+    ) {
+      const opt = document.createElement("option");
+      opt.value = String(person.anchorYear);
+      opt.textContent = schoolYearLabel(person.anchorYear);
+      anchorYearSelect.prepend(opt);
+    }
+    anchorYearSelect.value = String(person.anchorYear);
+    gradeSelect.value = String(person.anchorGrade);
+    populateFamilySelect(familyOf(person));
+    formHeading.textContent = `Edit ${person.name}`;
+  } else {
+    editingId = null;
+    formHeading.textContent = "Add someone";
   }
-  anchorYearSelect.value = String(person.anchorYear);
-  gradeSelect.value = String(person.anchorGrade);
-  populateFamilySelect(familyOf(person));
-  formHeading.textContent = `Edit ${person.name}`;
-  formCancelBtn.hidden = false;
+
+  manageView.hidden = true;
+  backupText.hidden = true;
+  form.hidden = false;
+  // Cancel and Save are the only ways out while the form is up, so the title
+  // bar's Done would just be a third, ambiguous exit.
+  manageCancelBtn.hidden = true;
   nameInput.focus();
 }
 
@@ -533,7 +589,7 @@ function buildManageList() {
     const editBtn = document.createElement("button");
     editBtn.type = "button";
     editBtn.textContent = "Edit";
-    editBtn.addEventListener("click", () => startEdit(person));
+    editBtn.addEventListener("click", () => openForm(person));
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
     removeBtn.className = "remove-btn";
@@ -542,8 +598,8 @@ function buildManageList() {
       if (!confirm(`Remove ${person.name}?`)) return;
       people = people.filter((p) => p.id !== person.id);
       savePeople();
-      if (editingId === person.id) resetForm();
-      // They may have been the last member of their family.
+      // They may have been the last member of their family, and the picker is
+      // rebuilt from the roster.
       refreshFamilySelect();
       buildManageList();
     });
@@ -557,9 +613,7 @@ function buildManageList() {
 function openManage() {
   managePanel.hidden = false;
   manageBtn.hidden = true;
-  manageCancelBtn.hidden = false;
-  resetForm();
-  buildManageList();
+  showManageView();
   render();
 }
 
@@ -567,7 +621,9 @@ function closeManage() {
   managePanel.hidden = true;
   manageBtn.hidden = false;
   manageCancelBtn.hidden = true;
+  form.hidden = true;
   backupText.hidden = true;
+  editingId = null;
   render();
 }
 
@@ -594,8 +650,8 @@ form.addEventListener("submit", (e) => {
   }
 
   savePeople();
-  resetForm();
-  buildManageList();
+  // Saving returns you to the roster rather than leaving a stale form up.
+  showManageView();
 });
 
 familySelect.addEventListener("change", () => {
@@ -603,10 +659,16 @@ familySelect.addEventListener("change", () => {
   if (!familyNewInput.hidden) familyNewInput.focus();
 });
 
-formCancelBtn.addEventListener("click", resetForm);
+formCancelBtn.addEventListener("click", showManageView);
 manageBtn.addEventListener("click", openManage);
 manageCancelBtn.addEventListener("click", closeManage);
-el("onboarding-add-btn").addEventListener("click", openManage);
+el("add-person-btn").addEventListener("click", () => openForm());
+
+// From the empty state there's no roster worth landing on first.
+el("onboarding-add-btn").addEventListener("click", () => {
+  openManage();
+  openForm();
+});
 
 // --- Export / import ---
 
@@ -646,8 +708,7 @@ el("import-btn").addEventListener("click", () => {
   savePeople();
   backupText.hidden = true;
   backupText.value = "";
-  resetForm();
-  buildManageList();
+  showManageView();
 });
 
 // --- Slider wiring ---

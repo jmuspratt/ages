@@ -94,7 +94,24 @@ During the summer the grade clause becomes "going into 4th grade". Ages read in 
 
 **The verb tracks the slider.** At today it's "is"; drag forward and every sentence becomes "Ida will be 10 years old and in 4th grade"; drag back and it's "Ida was 4 years old and not in school yet". Grade clauses are deliberately written tense-neutral — "out of high school" rather than "has graduated" — so the verb is the only word that has to change.
 
-Grade clauses outside K-12 — "not in school yet", "out of high school", "5 years past high school" — render in a muted grey, so the in-school kids stay visually dominant. Only that clause is greyed, not the whole sentence, which is why `sentenceFor()` returns the age and grade halves separately.
+Grade clauses outside K-12 — "not in school yet", "out of high school", "5 years past high school" — render in a muted grey, so the in-school kids stay visually dominant. Only that clause is greyed, not the whole sentence, which is why `sentenceFor()` returns the sentence in separately-rendered pieces.
+
+#### Colour and tense
+
+The sentence sits in a medium grey. The name holds full contrast throughout — whose row it is doesn't change with the date — and the two phrases that actually do change, the age and the grade, lift out in 600 weight and a colour that says where the slider is:
+
+| Slider | Age & grade phrases | Light | Dark |
+| --- | --- | --- | --- |
+| Today | near-black | `#1a1a1a` 17.40:1 | `#e8e8e8` 14.20:1 |
+| Ahead | green | `#1a7f37` 5.08:1 | `#3fb950` 6.85:1 |
+| Behind | amber | `#8a6100` 5.54:1 | `#d29922` 6.90:1 |
+| — | sentence grey | `#666` 5.74:1 | `#9a9a9a` 6.19:1 |
+
+Every value clears WCAG AA (4.5:1 for 15px text) against its own background, measured rather than estimated. Colour is deliberately redundant: the top bar already states the date and the verb already shifts between "is", "will be" and "was", so nobody depends on hue alone.
+
+The tint comes from one `data-tense` attribute written on `#people-list` by `paint()`, rebinding a single `--value` property. Dragging the slider therefore never restyles rows one by one.
+
+Out-of-range clauses are the exception — they stay `--grade-out` and take no tint, because "out of high school" isn't reporting a moment in time.
 
 ### The slider
 
@@ -107,6 +124,12 @@ A single `<input type="range">` pinned to the bottom of the screen, in thumb rea
 The active date is stated in full in the **top bar** — "Today is August 16, 2026", or "On September 1, 2027…" once you start dragging. Since that heading carries the date, the slider bar itself stays small: just the month and year in muted text.
 
 Dragging only rewrites two text nodes per person; the list DOM is built once and cached in `rowRefs`.
+
+### Manage
+
+The panel is two views that are never on screen at once. It opens on the roster — a single **Add someone…** button, the list of people, and Export/Import — so no empty form greets you. Tapping Add, or Edit on a row, swaps the roster out for the form, meaning editing one person never leaves the others visible underneath. `showManageView()` and `openForm(person)` are the only transitions.
+
+It's a view swap rather than a modal: no overlay, no backdrop, no scroll lock. On a phone it reads as a sheet regardless, and it keeps the app free of the layered UI the design rules out. While the form is up, the title bar's Done hides so Cancel and Save are the only ways out.
 
 ### Export / Import
 

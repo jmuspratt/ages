@@ -30,10 +30,18 @@ A single-page PWA that shows a set of kids' ages and American K-12 grade levels 
 Single `index.html` with:
 - A fixed top bar: the active date and a Manage button
 - A scrollable list of people
-- A hidden Manage panel (add/edit form, roster, Export/Import)
+- A hidden Manage panel, itself two mutually exclusive views
 - A fixed bottom bar: the target date and the slider
 
 No hamburger menus, no navbars, no routing.
+
+### The Manage panel's two views
+
+`#manage-view` (Add button, roster, Export/Import) and `#person-form` are never on screen together. Opening Manage lands on the roster — the form is not exposed until you tap **Add someone…** — and opening the form hides the roster, so editing one person doesn't leave the others sitting behind it. `showManageView()` and `openForm(person)` are the only two transitions; `openForm()` with no argument means adding.
+
+This is deliberately a view swap and not a modal — no overlay, no backdrop, no z-index, no scroll lock — which is how it satisfies "no modals, drawers, or overlays" while still reading as a sheet on a phone. The title bar's **Done** hides while the form is up, so Cancel and Save are the only exits and there's never a third ambiguous one.
+
+Both views are toggled with the `hidden` attribute, which is why `style.css` carries a global `[hidden] { display: none !important }`. The UA's own `[hidden]` rule loses to any author `display` declaration, and `#person-form` is `display: flex` — without the override, hiding the form silently does nothing. Don't remove it.
 
 ### Each list row
 
@@ -52,7 +60,19 @@ Rules:
 - Clauses outside K-12 get the `.out-of-range` class and render muted grey: "not in school yet", "out of high school", "3 years past high school".
 - The verb shifts with the slider: "is" at today, "will be" ahead, "was" behind. Every grade clause is written **tense-neutral** so only that one verb has to change — which is why it's "out of high school" and not "has graduated". Keep new clauses tense-neutral too.
 
-`sentenceFor()` deliberately returns the age and grade halves as separate strings, because they render into separate spans — that's what lets the grade clause grey out on its own without dimming the whole sentence. The trailing period is a static text node in the markup. Keep that split if you touch this.
+`sentenceFor()` deliberately returns the sentence in five pieces, because they render into separate spans: `lead` (the verb), `value` (the age phrase), `join` (" and "), `gradeLead` ("in " / "going into ") and `gradeValue` (the grade itself). The trailing period is a static text node in the markup. Keep that split if you touch this — it's what lets the grade clause grey out on its own without dimming the whole sentence, and what lets the two value phrases take a colour the connecting words don't.
+
+### Colour-coding the slider's tense
+
+The sentence body is a medium grey. The two value phrases — the age and the grade — lift out of it in **600 weight** and in a colour that reports where the slider is: near-black at today, green ahead, amber behind. Colour is redundant here, never the only signal; the heading already says the date, the verb already shifts tense, and the weight already separates the facts from the connecting words, so hue reads as reinforcement rather than the sole carrier of meaning.
+
+The **name** is the exception in the other direction: it holds `--text` at full contrast no matter where the slider is, because whose row this is doesn't change with the date. So each row is name + two bold facts, joined by grey connective tissue.
+
+The tint resolves from a single `data-tense` attribute that `paint()` writes on `#people-list`, with the three `#people-list[data-tense="…"]` rules rebinding one `--value` custom property. That's deliberate: scrubbing the slider must not restyle rows individually, so a drag stays one attribute write plus the cached text nodes.
+
+Out-of-range grade clauses keep `--grade-out` and are **not** tinted — `.person-value.out-of-range` outranks `.person-value`. They aren't reporting a moment in time, so giving them a tense colour would say something untrue.
+
+Every colour is chosen against its background for WCAG AA at 15px (4.5:1), in both schemes, and the measured ratio is written beside each custom property in `style.css`. If you change one, re-measure it; don't eyeball a replacement. Note `--grade-out` itself predates this and sits below AA (2.85:1 light, 3.89:1 dark) — deliberate de-emphasis, but worth knowing it's a gap.
 
 ### Grade arithmetic
 

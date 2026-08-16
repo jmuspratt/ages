@@ -35,18 +35,21 @@ No hamburger menus, no navbars, no routing.
 
 ### Each list row
 
-Two lines per person, name and grade on the top line:
+A sentence, with the birthday in smaller grey text beneath it:
 
 ```
-Ida                              4th Grade
-10 yrs, 4 mos               b. Apr 2, 2017
+Ida is 10 years old and in 4th grade.
+Born April 2, 2017
 ```
 
 Rules:
-- Age reads "10 yrs, 4 mos", but drops the years entirely under age one ("8 mos") — nobody says "0 yrs, 8 mos"
-- Before a person's birthdate, the age column reads "Born in 5 mos"
-- Grades outside K-12 get the `.out-of-range` class and render muted grey: "Not in school yet", "Graduated", "3 yrs past high school"
-- During June–August, grades read "Rising 4th" / "Rising Kindergarten"
+- Ages read in whole years ("10 years old"). Under one, months alone ("8 months old"); through age one, both ("1 year, 11 months old"). Above two, months are dropped — the sentence reads better without them.
+- Before a person's birthdate the sentence changes shape: "Theo isn't born for another 3 years."
+- Grade clauses are lowercase and mid-sentence: "in 4th grade", "in kindergarten", "in pre-K". `gradeNoun()` produces these; `gradeName()` is the title-case version and is only for the Manage panel and the grade picker.
+- During June–August the clause becomes "going into 4th grade" — there is no current grade in the summer.
+- Clauses outside K-12 get the `.out-of-range` class and render muted grey: "not in school yet", "has graduated", "3 years past high school".
+
+`sentenceFor()` deliberately returns the age and grade halves as separate strings, because they render into separate spans — that's what lets the grade clause grey out on its own without dimming the whole sentence. The trailing period is a static text node in the markup. Keep that split if you touch this.
 
 ### Grade arithmetic
 

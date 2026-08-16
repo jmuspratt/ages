@@ -138,41 +138,23 @@ button {
 }
 
 .person-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-12);
-  padding: var(--space-10) var(--space-16);
+  padding: var(--space-12) var(--space-16);
   border-bottom: 1px solid var(--separator);
 }
 
-.person-main {
-  min-width: 0;
+.person-sentence {
+  font-size: var(--font-size-15);
+  line-height: 1.35;
+  /* Keep "8th grade" and "isn't born" from breaking across lines mid-phrase */
+  text-wrap: pretty;
 }
 
 .person-name {
-  font-size: var(--font-size-15);
   font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.person-age {
-  font-size: var(--font-size-12);
-  color: var(--text-muted);
-  margin-top: var(--space-2);
-}
-
-.person-side {
-  text-align: right;
-  flex-shrink: 0;
 }
 
 .person-grade {
-  font-size: var(--font-size-15);
   color: var(--grade);
-  white-space: nowrap;
 }
 
 .person-grade.out-of-range {
@@ -180,10 +162,9 @@ button {
 }
 
 .person-birth {
-  font-size: var(--font-size-11);
-  color: var(--text-faint);
-  margin-top: var(--space-2);
-  white-space: nowrap;
+  font-size: var(--font-size-12);
+  color: var(--text-muted);
+  margin-top: var(--space-4);
 }
 
 /* --- Onboarding --- */

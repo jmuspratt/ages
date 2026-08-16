@@ -73,14 +73,16 @@ Renders an empty state: "Add the kids you want to track…". If the app isn't ru
 
 ### The list
 
-One row per person, oldest first:
+One row per person, oldest first, written as a sentence with the birthday in smaller grey text beneath:
 
 ```
-Ida                              4th Grade
-10 yrs, 4 mos               b. Apr 2, 2017
+Ida is 10 years old and in 4th grade.
+Born April 2, 2017
 ```
 
-Grades outside K-12 ("Not in school yet", "Graduated") render in a muted grey so the in-school kids stay visually dominant.
+During the summer the grade clause becomes "going into 4th grade". Ages read in whole years, except under two where months still carry meaning ("8 months old", "1 year, 11 months old"). Before a person's birthdate the sentence changes shape entirely: "Theo isn't born for another 3 years."
+
+Grade clauses outside K-12 — "not in school yet", "has graduated", "5 years past high school" — render in a muted grey, so the in-school kids stay visually dominant. Only that clause is greyed, not the whole sentence, which is why `sentenceFor()` returns the age and grade halves separately.
 
 ### The slider
 

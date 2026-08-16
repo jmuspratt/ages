@@ -107,6 +107,7 @@ function ordinal(n) {
   return `${n}${suffix}`;
 }
 
+// Title case, for the Manage panel and the grade picker.
 function gradeName(grade) {
   if (grade === PRE_K) return "Pre-K";
   if (grade === KINDERGARTEN) return "Kindergarten";
@@ -114,43 +115,71 @@ function gradeName(grade) {
   return null;
 }
 
-// What to show for `person` on `date`. During the summer there is no current
-// grade, so we report the one they're rising into — which is how people
-// actually talk about kids in July.
-function gradeLabelFor(person, date) {
+// Lowercase, for use mid-sentence in the list.
+function gradeNoun(grade) {
+  if (grade === PRE_K) return "pre-K";
+  if (grade === KINDERGARTEN) return "kindergarten";
+  return `${ordinal(grade)} grade`;
+}
+
+// The clause that follows "and" in a person's sentence. During the summer
+// there is no current grade, so we report the one they're going into — which
+// is how people actually talk about kids in July.
+function gradeClauseFor(person, date) {
   const summer = isSummer(date);
   const year = summer ? date.getFullYear() : schoolYearOf(date);
   const grade = person.anchorGrade + (year - person.anchorYear);
 
-  if (grade < PRE_K) return { text: "Not in school yet", outOfRange: true };
-  if (grade === LAST_GRADE + 1) return { text: "Graduated", outOfRange: true };
+  if (grade < PRE_K) return { text: "not in school yet", outOfRange: true };
+  if (grade === LAST_GRADE + 1) return { text: "has graduated", outOfRange: true };
   if (grade > LAST_GRADE + 1) {
     return {
-      text: `${pluralize(grade - LAST_GRADE, "yr")} past high school`,
+      text: `${pluralize(grade - LAST_GRADE, "year")} past high school`,
       outOfRange: true,
     };
   }
 
-  const name = gradeName(grade);
+  const noun = gradeNoun(grade);
   return {
-    text: summer ? `Rising ${name.replace(" Grade", "")}` : name,
+    text: summer ? `going into ${noun}` : `in ${noun}`,
     outOfRange: false,
   };
 }
 
-function ageLabelFor(person, date) {
+// "10 years old", or months alone under one — nobody says "0 years old".
+// Months stay attached through age one, where they still carry real meaning.
+function agePhrase(years, months) {
+  if (years === 0) return `${pluralize(months, "month")} old`;
+  if (years === 1 && months > 0) {
+    return `1 year, ${pluralize(months, "month")} old`;
+  }
+  return `${pluralize(years, "year")} old`;
+}
+
+// Splits into the two spans the row renders, so the grade half can be muted
+// on its own when it falls outside K-12. The trailing period is static markup.
+function sentenceFor(person, date) {
   const birth = parseDate(person.birthdate);
+
   if (date < birth) {
     const { years, months } = diffYearsMonths(date, birth);
     const parts = [];
-    if (years > 0) parts.push(pluralize(years, "yr"));
-    if (months > 0 || years === 0) parts.push(pluralize(months, "mo"));
-    return `Born in ${parts.join(", ")}`;
+    if (years > 0) parts.push(pluralize(years, "year"));
+    if (months > 0 || years === 0) parts.push(pluralize(months, "month"));
+    return {
+      age: ` isn't born for another ${parts.join(", ")}`,
+      grade: "",
+      outOfRange: true,
+    };
   }
+
   const { years, months } = diffYearsMonths(birth, date);
-  // Under one, months alone is the natural unit — nobody says "0 yrs, 8 mos".
-  if (years === 0) return pluralize(months, "mo");
-  return `${pluralize(years, "yr")}, ${pluralize(months, "mo")}`;
+  const grade = gradeClauseFor(person, date);
+  return {
+    age: ` is ${agePhrase(years, months)} and `,
+    grade: grade.text,
+    outOfRange: grade.outOfRange,
+  };
 }
 
 // --- Slider ---
@@ -225,25 +254,21 @@ function buildList() {
     const li = document.createElement("li");
     li.className = "person-row";
 
-    const main = document.createElement("div");
-    main.className = "person-main";
-    const name = document.createElement("div");
+    const sentence = document.createElement("p");
+    sentence.className = "person-sentence";
+    const name = document.createElement("span");
     name.className = "person-name";
     name.textContent = person.name;
-    const age = document.createElement("div");
-    age.className = "person-age";
-    main.append(name, age);
-
-    const side = document.createElement("div");
-    side.className = "person-side";
-    const grade = document.createElement("div");
+    const age = document.createElement("span");
+    const grade = document.createElement("span");
     grade.className = "person-grade";
-    const birth = document.createElement("div");
-    birth.className = "person-birth";
-    birth.textContent = `b. ${formatShortDate(parseDate(person.birthdate))}`;
-    side.append(grade, birth);
+    sentence.append(name, age, grade, document.createTextNode("."));
 
-    li.append(main, side);
+    const birth = document.createElement("p");
+    birth.className = "person-birth";
+    birth.textContent = `Born ${formatLongDate(parseDate(person.birthdate))}`;
+
+    li.append(sentence, birth);
     peopleList.append(li);
     rowRefs.push({ person, age, grade });
   }
@@ -251,10 +276,10 @@ function buildList() {
 
 function updateValues(date) {
   for (const { person, age, grade } of rowRefs) {
-    age.textContent = ageLabelFor(person, date);
-    const label = gradeLabelFor(person, date);
-    grade.textContent = label.text;
-    grade.classList.toggle("out-of-range", label.outOfRange);
+    const parts = sentenceFor(person, date);
+    age.textContent = parts.age;
+    grade.textContent = parts.grade;
+    grade.classList.toggle("out-of-range", parts.outOfRange);
   }
 }
 

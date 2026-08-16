@@ -450,7 +450,7 @@ body[data-tense="past"] {
   right: 0;
   bottom: 0;
   z-index: 10;
-  background: var(--bar-bg);
+  background: var(--bg);
   border-top: 1px solid var(--bar-border);
   padding: var(--space-10) var(--space-16)
     calc(var(--space-8) + env(safe-area-inset-bottom));

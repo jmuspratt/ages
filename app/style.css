@@ -4,7 +4,6 @@
   --text: #1a1a1a;
   --text-muted: #888;
   --text-faint: #aaa;
-  --bar-bg: #ffffff;
   --bar-border: #e0e0e0;
   --field-border: #ccc;
   --field-bg: #ffffff;
@@ -60,7 +59,6 @@
     --text: #e8e8e8;
     --text-muted: #888;
     --text-faint: #666;
-    --bar-bg: #1a1a1a;
     --bar-border: #303030;
     --field-border: #444;
     --field-bg: #222;
@@ -136,7 +134,7 @@ button {
   justify-content: space-between;
   height: calc(var(--title-bar-height) + env(safe-area-inset-top));
   padding: env(safe-area-inset-top) var(--space-8) 0 var(--space-16);
-  /* background: var(--bar-bg); */
+  background: var(--bg);
   border-bottom: solid 1px var(--bar-border);
 }
 

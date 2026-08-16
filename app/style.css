@@ -83,7 +83,8 @@ body {
   -webkit-text-size-adjust: 100%;
   /* Room for the fixed title bar above and the fixed time bar below */
   padding-top: calc(var(--title-bar-height) + env(safe-area-inset-top));
-  padding-bottom: calc(var(--space-64) + var(--space-32) + env(safe-area-inset-bottom));
+  /* Clears the fixed time bar, which measures 77px tall at its default sizes */
+  padding-bottom: calc(var(--space-64) + var(--space-16) + env(safe-area-inset-bottom));
 }
 
 body::-webkit-scrollbar {
@@ -122,8 +123,13 @@ button {
 }
 
 #app-title {
-  font-size: var(--font-size-17);
+  font-size: var(--font-size-15);
   font-weight: 600;
+  /* Holds a full date, so it has to yield before the Manage button does */
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 #title-actions {
@@ -338,19 +344,12 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-12);
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-2);
 }
 
-#date-main {
-  font-size: var(--font-size-22);
-  font-weight: 600;
-  line-height: 1.1;
-}
-
-#date-sub {
+#date-label {
   font-size: var(--font-size-12);
   color: var(--text-muted);
-  margin-top: var(--space-2);
 }
 
 #today-btn {

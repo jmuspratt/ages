@@ -82,7 +82,9 @@ Born April 2, 2017
 
 During the summer the grade clause becomes "going into 4th grade". Ages read in whole years, except under two where months still carry meaning ("8 months old", "1 year, 11 months old"). Before a person's birthdate the sentence changes shape entirely: "Theo isn't born for another 3 years."
 
-Grade clauses outside K-12 — "not in school yet", "has graduated", "5 years past high school" — render in a muted grey, so the in-school kids stay visually dominant. Only that clause is greyed, not the whole sentence, which is why `sentenceFor()` returns the age and grade halves separately.
+**The verb tracks the slider.** At today it's "is"; drag forward and every sentence becomes "Ida will be 10 years old and in 4th grade"; drag back and it's "Ida was 4 years old and not in school yet". Grade clauses are deliberately written tense-neutral — "out of high school" rather than "has graduated" — so the verb is the only word that has to change.
+
+Grade clauses outside K-12 — "not in school yet", "out of high school", "5 years past high school" — render in a muted grey, so the in-school kids stay visually dominant. Only that clause is greyed, not the whole sentence, which is why `sentenceFor()` returns the age and grade halves separately.
 
 ### The slider
 
@@ -91,6 +93,8 @@ A single `<input type="range">` pinned to the bottom of the screen, in thumb rea
 - **Centre (index 60)** is today's actual date.
 - **Every other stop** is the 1st of that month. Grade transitions always land on September 1, so month resolution is all the precision the app needs, and it keeps a full decade draggable across a phone-width track.
 - A **Today** button appears next to the date whenever the slider is off-centre. There's deliberately no centre snap-detent — it would make ±1 month unreachable.
+
+The active date is stated in full in the **top bar** — "Today is August 16, 2026", or "On September 1, 2027…" once you start dragging. Since that heading carries the date, the slider bar itself stays small: just the month and year in muted text.
 
 Dragging only rewrites two text nodes per person; the list DOM is built once and cached in `rowRefs`.
 

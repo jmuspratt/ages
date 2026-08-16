@@ -26,7 +26,7 @@ A single-page PWA that shows a set of kids' ages and American K-12 grade levels 
 ### HTML structure
 
 Single `index.html` with:
-- A fixed top bar: the title and a Manage button
+- A fixed top bar: the active date and a Manage button
 - A scrollable list of people
 - A hidden Manage panel (add/edit form, roster, Export/Import)
 - A fixed bottom bar: the target date and the slider
@@ -47,7 +47,8 @@ Rules:
 - Before a person's birthdate the sentence changes shape: "Theo isn't born for another 3 years."
 - Grade clauses are lowercase and mid-sentence: "in 4th grade", "in kindergarten", "in pre-K". `gradeNoun()` produces these; `gradeName()` is the title-case version and is only for the Manage panel and the grade picker.
 - During June–August the clause becomes "going into 4th grade" — there is no current grade in the summer.
-- Clauses outside K-12 get the `.out-of-range` class and render muted grey: "not in school yet", "has graduated", "3 years past high school".
+- Clauses outside K-12 get the `.out-of-range` class and render muted grey: "not in school yet", "out of high school", "3 years past high school".
+- The verb shifts with the slider: "is" at today, "will be" ahead, "was" behind. Every grade clause is written **tense-neutral** so only that one verb has to change — which is why it's "out of high school" and not "has graduated". Keep new clauses tense-neutral too.
 
 `sentenceFor()` deliberately returns the age and grade halves as separate strings, because they render into separate spans — that's what lets the grade clause grey out on its own without dimming the whole sentence. The trailing period is a static text node in the markup. Keep that split if you touch this.
 
@@ -59,7 +60,11 @@ Parse `YYYY-MM-DD` with `parseDate()`, never `new Date(str)` — the latter is r
 
 ### Slider
 
-`<input type="range" min="0" max="120">`. Index 60 is today's real date; every other index is the 1st of that month, `RANGE_MONTHS` in each direction. The bottom bar shows the month and year large, with "1 yr, 2 mos from now" beneath, and a **Today** pill that appears only when off-centre.
+`<input type="range" min="0" max="120">`. Index 60 is today's real date; every other index is the 1st of that month, `RANGE_MONTHS` in each direction.
+
+The **top bar** carries the active date in full: "Today is August 16, 2026" at centre, "On September 1, 2027…" anywhere else. Because that heading already states the date, the bottom bar stays deliberately small — just the month and year in muted 12px text, plus a **Today** pill that appears only when off-centre. Don't reintroduce a large date heading or a "3 months from now" relative label down there; both were removed as redundant.
+
+`paint(date)` is the single entry point for everything that changes as the slider moves — heading, bar label, Today button, and all the sentences.
 
 ### Offline behavior
 

@@ -131,7 +131,11 @@ function gradeClauseFor(person, date) {
   const grade = person.anchorGrade + (year - person.anchorYear);
 
   if (grade < PRE_K) return { text: "not in school yet", outOfRange: true };
-  if (grade === LAST_GRADE + 1) return { text: "has graduated", outOfRange: true };
+  // "out of high school" rather than "has graduated" so the clause carries no
+  // tense of its own — only the "be" verb ahead of it changes with the slider.
+  if (grade === LAST_GRADE + 1) {
+    return { text: "out of high school", outOfRange: true };
+  }
   if (grade > LAST_GRADE + 1) {
     return {
       text: `${pluralize(grade - LAST_GRADE, "year")} past high school`,
@@ -156,9 +160,24 @@ function agePhrase(years, months) {
   return `${pluralize(years, "year")} old`;
 }
 
+// Every grade clause is written tense-neutral, so shifting the whole sentence
+// through time is just a matter of swapping the verb ahead of it.
+const BE_VERB = { present: "is", past: "was", future: "will be" };
+const UNBORN_VERB = {
+  present: "isn't born for another",
+  past: "wouldn't be born for another",
+  future: "won't be born for another",
+};
+
+function tenseFor(date) {
+  const today = startOfToday();
+  if (date.getTime() === today.getTime()) return "present";
+  return date > today ? "future" : "past";
+}
+
 // Splits into the two spans the row renders, so the grade half can be muted
 // on its own when it falls outside K-12. The trailing period is static markup.
-function sentenceFor(person, date) {
+function sentenceFor(person, date, tense) {
   const birth = parseDate(person.birthdate);
 
   if (date < birth) {
@@ -167,7 +186,7 @@ function sentenceFor(person, date) {
     if (years > 0) parts.push(pluralize(years, "year"));
     if (months > 0 || years === 0) parts.push(pluralize(months, "month"));
     return {
-      age: ` isn't born for another ${parts.join(", ")}`,
+      age: ` ${UNBORN_VERB[tense]} ${parts.join(", ")}`,
       grade: "",
       outOfRange: true,
     };
@@ -176,10 +195,16 @@ function sentenceFor(person, date) {
   const { years, months } = diffYearsMonths(birth, date);
   const grade = gradeClauseFor(person, date);
   return {
-    age: ` is ${agePhrase(years, months)} and `,
+    age: ` ${BE_VERB[tense]} ${agePhrase(years, months)} and `,
     grade: grade.text,
     outOfRange: grade.outOfRange,
   };
+}
+
+function headingFor(date, tense) {
+  return tense === "present"
+    ? `Today is ${formatLongDate(date)}`
+    : `On ${formatLongDate(date)}…`;
 }
 
 // --- Slider ---
@@ -228,8 +253,8 @@ const manageBtn = el("manage-btn");
 const manageCancelBtn = el("manage-cancel-btn");
 const timeBar = el("time-bar");
 const slider = el("time-slider");
-const dateMain = el("date-main");
-const dateSub = el("date-sub");
+const appTitle = el("app-title");
+const dateLabel = el("date-label");
 const todayBtn = el("today-btn");
 const form = el("person-form");
 const formHeading = el("form-heading");
@@ -274,35 +299,26 @@ function buildList() {
   }
 }
 
-function updateValues(date) {
+function updateValues(date, tense) {
   for (const { person, age, grade } of rowRefs) {
-    const parts = sentenceFor(person, date);
+    const parts = sentenceFor(person, date, tense);
     age.textContent = parts.age;
     grade.textContent = parts.grade;
     grade.classList.toggle("out-of-range", parts.outOfRange);
   }
 }
 
-function updateDateDisplay(date) {
-  const today = startOfToday();
-  if (sliderValue === CENTER) {
-    dateMain.textContent = "Today";
-    dateSub.textContent = formatLongDate(today);
-    todayBtn.hidden = true;
-    return;
-  }
-
-  dateMain.textContent = `${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
-  const ahead = date > today;
-  const { years, months } = ahead
-    ? diffYearsMonths(today, date)
-    : diffYearsMonths(date, today);
-  const parts = [];
-  if (years > 0) parts.push(pluralize(years, "yr"));
-  if (months > 0 || years === 0) parts.push(pluralize(months, "mo"));
-  const span = parts.join(", ");
-  dateSub.textContent = ahead ? `${span} from now` : `${span} ago`;
-  todayBtn.hidden = false;
+// Everything that changes as the slider moves. The header carries the full
+// active date, so the bar above the slider only needs the month and year.
+function paint(date) {
+  const tense = tenseFor(date);
+  appTitle.textContent = headingFor(date, tense);
+  dateLabel.textContent =
+    tense === "present"
+      ? "Today"
+      : `${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+  todayBtn.hidden = tense === "present";
+  updateValues(date, tense);
 }
 
 function render() {
@@ -316,8 +332,7 @@ function render() {
   if (!managing) {
     const date = dateForSlider(sliderValue);
     buildList();
-    updateValues(date);
-    updateDateDisplay(date);
+    paint(date);
   }
 }
 
@@ -510,16 +525,14 @@ el("import-btn").addEventListener("click", () => {
 slider.addEventListener("input", () => {
   sliderValue = Number(slider.value);
   const date = dateForSlider(sliderValue);
-  updateValues(date);
-  updateDateDisplay(date);
+  paint(date);
 });
 
 todayBtn.addEventListener("click", () => {
   sliderValue = CENTER;
   slider.value = String(CENTER);
   const date = dateForSlider(sliderValue);
-  updateValues(date);
-  updateDateDisplay(date);
+  paint(date);
 });
 
 // --- Boot ---

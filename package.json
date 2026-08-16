@@ -1,0 +1,11 @@
+{
+  "name": "people-dates",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node scripts/start.js",
+    "deploy": "bash scripts/deploy.sh",
+    "icons": "node scripts/make-icons.js"
+  }
+}

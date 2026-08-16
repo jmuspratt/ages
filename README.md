@@ -1,0 +1,163 @@
+# Ages — Kids' Ages & Grades PWA
+
+A mobile-first PWA that shows, at a glance, how old a set of kids are and what American K-12 grade they're in — then lets you drag a slider five years in either direction and watch both update.
+
+Installable on iPhone via Safari → Share → Add to Home Screen.
+
+## Why this exists
+
+"How old will she be when he starts high school?" is a question that normally takes a calculator and a scrap of paper. This app answers it by dragging your thumb across the bottom of the screen.
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────┐
+│  1. Static hosting (rsync to web server)     │
+│     - index.html / app.js / style.css        │
+│     - sw.js / manifest.json / icons          │
+├─────────────────────────────────────────────┤
+│  2. PWA frontend (vanilla JS)                │
+│     - Roster lives in localStorage, per      │
+│       device — no accounts, no backend       │
+│     - Service worker caches the whole shell  │
+│     - Export/Import moves a list between     │
+│       devices by hand                        │
+└─────────────────────────────────────────────┘
+```
+
+There is no server-side component. Every age and grade is arithmetic done in the browser from two stored numbers, so the app works fully offline and there is nothing to keep running.
+
+This is a deliberate difference from its sibling project `../hours`, which does run a persistent Node process under PM2 — but only to keep a Google Places API key server-side. Ages has no secret to hide and no external data source, so it stays purely static.
+
+## Data model
+
+Each person, held in localStorage:
+
+```json
+{
+  "id": "ida",
+  "name": "Ida",
+  "birthdate": "2017-04-02",
+  "anchorYear": 2026,
+  "anchorGrade": 3
+}
+```
+
+Field details:
+
+- `id`: URL-safe slug of the name, generated on add. Suffixed if it collides.
+- `birthdate`: `YYYY-MM-DD`. Parsed as a *local* date — `new Date("2017-04-02")` would be read as UTC and land a day early for anyone west of Greenwich.
+- `anchorYear` + `anchorGrade`: the heart of the app. Grade isn't derivable from a birthdate — cutoffs vary, kids get held back or skip — so it's captured once, as "in school year X, they were in grade Y", and every other year is arithmetic from there.
+
+`anchorGrade` is an integer so the arithmetic is trivial: `-1` = Pre-K, `0` = Kindergarten, `1`–`12` = numbered grades. Values outside that range are still meaningful and get rendered as "Not in school yet" or "Graduated" / "N yrs past high school".
+
+### localStorage keys
+
+- `people_dates_data`: the array of people above.
+
+### School years
+
+A school year is named for the September that starts it: the **2026 school year runs September 2026 through August 2027**. One function, `schoolYearOf(date)`, owns this mapping, and grade at any date is:
+
+```
+grade = anchorGrade + (schoolYearOf(date) - anchorYear)
+```
+
+**Summer is a special case.** Between June and August there is no current grade, so the app reports the one they're rising into — "Rising 4th", "Rising Kindergarten" — which is how people actually talk about kids in July. In those months the year used is the calendar year itself rather than `schoolYearOf`.
+
+## Frontend behavior
+
+### First load
+
+Renders an empty state: "Add the kids you want to track…". If the app isn't running standalone, it also warns that iOS keeps *separate* localStorage for a Safari tab and a home-screen app — so anything typed in the browser won't follow you to the installed icon. That hint disappears once there's a roster, since by then the damage would already be done.
+
+### The list
+
+One row per person, oldest first:
+
+```
+Ida                              4th Grade
+10 yrs, 4 mos               b. Apr 2, 2017
+```
+
+Grades outside K-12 ("Not in school yet", "Graduated") render in a muted grey so the in-school kids stay visually dominant.
+
+### The slider
+
+A single `<input type="range">` pinned to the bottom of the screen, in thumb reach. 121 stops covering ±5 years:
+
+- **Centre (index 60)** is today's actual date.
+- **Every other stop** is the 1st of that month. Grade transitions always land on September 1, so month resolution is all the precision the app needs, and it keeps a full decade draggable across a phone-width track.
+- A **Today** button appears next to the date whenever the slider is off-centre. There's deliberately no centre snap-detent — it would make ±1 month unreachable.
+
+Dragging only rewrites two text nodes per person; the list DOM is built once and cached in `rowRefs`.
+
+### Export / Import
+
+The Manage panel has an Export button that dumps the roster as JSON into a textarea, and an Import that reads it back. Since localStorage is the only store and it's per-device *and* per-context on iOS, this is the entire backup and device-transfer story.
+
+## Project structure
+
+```
+/
+├── app/                    # Frontend (deployed as static site)
+│   ├── index.html          # Single page app shell
+│   ├── app.js              # All frontend logic
+│   ├── style.css           # Styles
+│   ├── sw.js               # Service worker
+│   ├── manifest.json       # PWA manifest
+│   └── icon-*.png          # PWA icons (generated, committed)
+├── scripts/
+│   ├── start.js            # Local static server for previewing app/
+│   ├── deploy.sh           # Bumps SW cache version and rsyncs app/ to server
+│   └── make-icons.js       # Regenerates icon-192/512.png from scratch
+├── .env                    # Deploy path (not committed)
+├── CLAUDE.md
+└── README.md
+```
+
+## Setup
+
+### Prerequisites
+
+Node.js 18+, for the dev server and icon generator only. The app itself has no dependencies and no build step.
+
+### Configuration
+
+Create a `.env` file in the project root:
+
+```
+DEPLOY_PATH=user@server:/var/www/example.com/html
+```
+
+### Running locally
+
+```bash
+npm run start   # → http://localhost:3000
+```
+
+That's the whole setup. Open in Safari on iPhone → Share → Add to Home Screen, tap Manage, and add your kids.
+
+## Day-to-day workflow
+
+### Adding or editing a person
+
+Use **Manage** in the app. No script, no deploy — it only affects that device's list.
+
+### Deploying changes
+
+After editing `app/`:
+
+```bash
+npm run deploy
+```
+
+Rsyncs `app/` to `DEPLOY_PATH` with `--delete`, and bumps the service worker cache version so installed PWAs pick up the change. Without that bump, a cache-first service worker will happily serve the old app forever.
+
+### Regenerating icons
+
+```bash
+npm run icons
+```
+
+`scripts/make-icons.js` draws the icon into a raw RGBA buffer and encodes a PNG with Node's built-in `zlib` — no canvas, no sharp, no SVG rasterizer, keeping the zero-dependency promise. Edit the constants at the top of that file to change the design. The output PNGs are committed, so this only needs running when the design changes.

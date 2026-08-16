@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Ages">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1a1a1a" media="(prefers-color-scheme: dark)">
+  <title>Ages</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+</head>
+<body>
+  <header id="title-bar">
+    <div id="app-title">Ages</div>
+    <div id="title-actions">
+      <button id="manage-cancel-btn" hidden>Done</button>
+      <button id="manage-btn">Manage</button>
+    </div>
+  </header>
+
+  <ul id="people-list"></ul>
+
+  <div id="onboarding" hidden>
+    <p>Add the kids you want to track, then drag the slider to see their ages and grades at any point in the next five years.</p>
+    <p class="a2hs-hint" hidden>iPhone users: add this page to your home screen <strong>before</strong> entering anyone — via <strong>Share &rarr; Add to Home Screen</strong>. Safari and the home-screen app keep separate storage, so anything saved here won't follow you over.</p>
+    <button id="onboarding-add-btn" class="cta-btn">Add someone&hellip;</button>
+  </div>
+
+  <div id="manage-panel" hidden>
+    <form id="person-form" autocomplete="off">
+      <div id="form-heading">Add someone</div>
+      <input type="hidden" id="person-id">
+      <label for="person-name">Name</label>
+      <input id="person-name" type="text" placeholder="Ida" required>
+      <label for="person-birthdate">Birthday</label>
+      <input id="person-birthdate" type="date" required>
+      <label for="person-grade">School year &amp; grade</label>
+      <div id="grade-row">
+        <select id="person-anchor-year"></select>
+        <select id="person-grade"></select>
+      </div>
+      <div id="form-actions">
+        <button type="button" id="form-cancel-btn" hidden>Cancel</button>
+        <button type="submit" id="form-save-btn" class="cta-btn">Save</button>
+      </div>
+    </form>
+
+    <ul id="manage-list"></ul>
+
+    <div id="backup-row">
+      <button id="export-btn">Export</button>
+      <button id="import-btn">Import</button>
+    </div>
+    <textarea id="backup-text" spellcheck="false" hidden></textarea>
+  </div>
+
+  <footer id="time-bar">
+    <div id="date-row">
+      <div id="date-text">
+        <div id="date-main">Today</div>
+        <div id="date-sub"></div>
+      </div>
+      <button id="today-btn" hidden>Today</button>
+    </div>
+    <div id="slider-wrap">
+      <input id="time-slider" type="range" min="0" max="120" step="1" value="60"
+             aria-label="Target date, five years back to five years forward">
+      <div id="slider-ticks" aria-hidden="true">
+        <span>&minus;5y</span><span>now</span><span>+5y</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js" type="module"></script>
+</body>
+</html>

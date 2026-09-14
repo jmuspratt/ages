@@ -86,11 +86,11 @@
   display: none !important;
 }
 
-html,
-body {
-  overscroll-behavior: none;
-}
-
+/* The document is the scroller — there is no overflow container anywhere in
+   the app, so the list gets iOS's own momentum and rubber-banding for free.
+   `overscroll-behavior: none` used to sit on html/body to kill the bounce; it
+   took the inertia with it, and standalone mode has no pull-to-refresh to
+   suppress in the first place. Don't put it back. */
 body {
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: var(--font-size-14);
@@ -474,6 +474,9 @@ body[data-tense="past"] {
   flex-shrink: 0;
 }
 
+/* A small pill riding in a visible channel, rather than a large disc on a hairline.
+   The input stays 28px tall for the touch target — the thumb is the only part
+   that shrank, and the channel it sits in makes the shorter travel legible. */
 #time-slider {
   -webkit-appearance: none;
   appearance: none;
@@ -483,32 +486,33 @@ body[data-tense="past"] {
 }
 
 #time-slider::-webkit-slider-runnable-track {
-  height: 4px;
-  border-radius: 2px;
+  height: 20px;
+  border-radius: 999px;
   background: var(--track);
 }
 
+/* Wider than it is tall, and inset 3px so the channel reads around it. */
 #time-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 28px;
-  height: 28px;
-  margin-top: -12px;
-  border-radius: 50%;
+  width: 20px;
+  height: 14px;
+  margin-top: 3px;
+  border-radius: 999px;
   background: var(--accent);
   border: none;
 }
 
 #time-slider::-moz-range-track {
-  height: 4px;
-  border-radius: 2px;
+  height: 20px;
+  border-radius: 999px;
   background: var(--track);
 }
 
 #time-slider::-moz-range-thumb {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
+  width: 20px;
+  height: 14px;
+  border-radius: 999px;
   background: var(--accent);
   border: none;
 }
@@ -519,6 +523,6 @@ body[data-tense="past"] {
   font-size: var(--font-size-10);
   color: var(--text-faint);
   /* Align the end labels with the thumb's centre at each extreme */
-  padding: 0 var(--space-2);
-  margin-top: -2px;
+  padding: 0 var(--space-4);
+  margin-top: var(--space-2);
 }

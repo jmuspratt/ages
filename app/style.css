@@ -152,7 +152,37 @@ button {
 
 #title-actions {
   display: flex;
+  align-items: center;
   gap: var(--space-4);
+}
+
+/* The sort menu, dressed as a plain-tier word beside Manage. The real <select>
+   is stretched invisibly over the label: it has to stay at the 16px zoom-safe
+   size or iOS zooms the viewport when it opens, but 16px text would shout in a
+   13px title bar. Tapping the word still opens the native picker. */
+#sort-control {
+  position: relative;
+  display: block;
+}
+
+#sort-current {
+  display: block;
+  font-size: var(--font-size-13);
+  color: var(--accent);
+  padding: var(--space-6) var(--space-8);
+  white-space: nowrap;
+}
+
+#sort-select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  font-size: var(--font-size-zoom-safe);
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
 }
 
 /* --- People list --- */
@@ -171,6 +201,7 @@ button {
   list-style: none;
   padding: var(--space-20) var(--space-12);
 }
+
 
 /* A family reads as one object. No rules anywhere — the card edge does the
    separating that a border used to, and unassigned people need neither. */

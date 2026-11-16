@@ -27,6 +27,11 @@ let people = loadPeople();
 let sliderValue = CENTER;
 let editingId = null;
 
+// How both lists are grouped: "family", "age" or "birthday". Deliberately held
+// in memory only — `people_dates_data` is the app's one localStorage key — so
+// every launch opens on families.
+let sortMode = "family";
+
 // iOS (and most browsers) keep separate localStorage for a plain browser tab
 // vs. an "Add to Home Screen" app at the same URL — so a roster typed into
 // Safari won't be there once the home-screen icon is added and opened.
@@ -302,6 +307,94 @@ function groupedPeople() {
   return groups;
 }
 
+// --- Sort modes ---
+
+// Every mode answers the same question — what are the groups? — in the same
+// shape as groupedPeople(), so the renderers never learn which mode is on. A
+// named group is a titled card; a nameless one renders bare. Age has no groups
+// at all, so it's one nameless group: the whole roster bare, oldest first.
+//
+// Family mode with no families would be indistinguishable from Age, so it
+// quietly reads as Age until a family exists (and the control hides it).
+function activeSortMode() {
+  if (sortMode === "family" && familyNames().length === 0) return "age";
+  return sortMode;
+}
+
+function groupsFor(mode) {
+  if (mode === "age") return [{ name: "", people: sortedPeople() }];
+  if (mode === "birthday") return birthdayGroups();
+  return groupedPeople();
+}
+
+// A birthday falling in `year`. February 29 is kept on February 28 in common
+// years, which is when most leap-day kids actually celebrate.
+function birthdayIn(birth, year) {
+  const month = birth.getMonth();
+  const day = birth.getDate();
+  if (month === 1 && day === 29 && new Date(year, 1, 29).getMonth() !== 1) {
+    return new Date(year, 1, 28);
+  }
+  return new Date(year, month, day);
+}
+
+// The next birthday on or after `today`, and the age it brings. Someone not
+// yet born has their birth as the next occasion, with `turns` of 0.
+function nextBirthday(person, today) {
+  const birth = parseDate(person.birthdate);
+  if (birth >= today) return { date: birth, turns: 0 };
+  let date = birthdayIn(birth, today.getFullYear());
+  if (date < today) date = birthdayIn(birth, today.getFullYear() + 1);
+  return { date, turns: date.getFullYear() - birth.getFullYear() };
+}
+
+// Cards by the month of each next birthday, soonest first. Measured from the
+// real today, never the slider: re-sorting mid-drag would rebuild the list DOM
+// and make rows jump under your thumb. A birthday already past this month lands
+// a year out, which is why every heading carries its year.
+function birthdayGroups() {
+  const today = startOfToday();
+  const dated = people
+    .map((person) => ({ person, date: nextBirthday(person, today).date }))
+    .sort(
+      (a, b) =>
+        a.date - b.date || a.person.birthdate.localeCompare(b.person.birthdate),
+    );
+
+  const groups = [];
+  for (const { person, date } of dated) {
+    const name = `${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+    const last = groups[groups.length - 1];
+    if (last && last.name === name) last.people.push(person);
+    else groups.push({ name, people: [person] });
+  }
+  return groups;
+}
+
+// The grey line under a row's sentence. In Birthday mode it says what's coming
+// rather than what happened. Outside Family mode no card names the family, so
+// the row does instead — the family is stated exactly once, wherever it goes.
+function detailFor(person, mode) {
+  const birth = parseDate(person.birthdate);
+  let text = `Born ${formatLongDate(birth)}`;
+  if (mode === "birthday") {
+    const today = startOfToday();
+    const { date, turns } = nextBirthday(person, today);
+    if (turns > 0) {
+      text =
+        date.getTime() === today.getTime()
+          ? `Turns ${turns} today`
+          : `Turns ${turns} on ${MONTHS[date.getMonth()]} ${date.getDate()}`;
+    }
+  }
+  return withFamily(text, person, mode);
+}
+
+function withFamily(text, person, mode) {
+  const family = familyOf(person);
+  return mode !== "family" && family ? `${text} · ${family}` : text;
+}
+
 // Every family card is titled. There used to be a rule suppressing the heading
 // for a lone family — back when a heading sat loose above a flat list and would
 // have been the only thing there. A card needs its name regardless: an untitled
@@ -321,6 +414,9 @@ const manageCancelBtn = el("manage-cancel-btn");
 const timeBar = el("time-bar");
 const slider = el("time-slider");
 const dateHeading = el("date-heading");
+const sortControl = el("sort-control");
+const sortSelect = el("sort-select");
+const sortCurrent = el("sort-current");
 const dateLabel = el("date-label");
 const todayBtn = el("today-btn");
 const form = el("person-form");
@@ -340,27 +436,31 @@ let rowRefs = [];
 
 // --- Rendering ---
 
+// Where a group's rows go. A named group — a family, or a birthday month — gets
+// a titled card; a nameless one sits bare on the page. Rows nest in their own
+// <ul> so an <li> never contains another. Shared by both lists, so the main
+// list and the roster can't drift apart.
+function groupContainer(list, group) {
+  if (!group.name) return list;
+  const card = document.createElement("li");
+  card.className = "family-card";
+  const heading = document.createElement("div");
+  heading.className = "family-heading";
+  heading.textContent = group.name;
+  const inner = document.createElement("ul");
+  inner.className = "family-people";
+  card.append(heading, inner);
+  list.append(card);
+  return inner;
+}
+
 function buildList() {
   peopleList.innerHTML = "";
   rowRefs = [];
+  const mode = activeSortMode();
 
-  for (const group of groupedPeople()) {
-    // A named family gets a titled card; the nameless remainder sits bare on
-    // the page. Rows nest in their own <ul> so an <li> never contains another.
-    let container = peopleList;
-    if (group.name) {
-      const card = document.createElement("li");
-      card.className = "family-card";
-      const heading = document.createElement("div");
-      heading.className = "family-heading";
-      heading.textContent = group.name;
-      card.append(heading);
-      const inner = document.createElement("ul");
-      inner.className = "family-people";
-      card.append(inner);
-      peopleList.append(card);
-      container = inner;
-    }
+  for (const group of groupsFor(mode)) {
+    const container = groupContainer(peopleList, group);
 
     for (const person of group.people) {
       const li = document.createElement("li");
@@ -390,7 +490,7 @@ function buildList() {
 
       const birth = document.createElement("p");
       birth.className = "person-birth";
-      birth.textContent = `Born ${formatLongDate(parseDate(person.birthdate))}`;
+      birth.textContent = detailFor(person, mode);
 
       li.append(sentence, birth);
       container.append(li);
@@ -428,6 +528,32 @@ function paint(date) {
   updateValues(date, tense);
 }
 
+const SORT_LABELS = {
+  family: "By family",
+  age: "By age",
+  birthday: "By birthday",
+};
+
+// Options are rebuilt rather than hidden: iOS's picker ignores `hidden` on an
+// <option>. Family drops out while there are no families, since it would look
+// exactly like Age. The visible label mirrors the selection, because the real
+// <select> sits invisibly on top of it (see #sort-control in style.css).
+function syncSortControl() {
+  const mode = activeSortMode();
+  const modes = Object.keys(SORT_LABELS).filter(
+    (m) => m !== "family" || familyNames().length > 0,
+  );
+  sortSelect.innerHTML = "";
+  for (const m of modes) {
+    const opt = document.createElement("option");
+    opt.value = m;
+    opt.textContent = SORT_LABELS[m];
+    sortSelect.append(opt);
+  }
+  sortSelect.value = mode;
+  sortCurrent.textContent = SORT_LABELS[mode];
+}
+
 function render() {
   const hasPeople = people.length > 0;
   const managing = !managePanel.hidden;
@@ -435,11 +561,15 @@ function render() {
   onboarding.hidden = hasPeople || managing;
   // The heading describes the list, so it goes wherever the list goes.
   dateHeading.hidden = managing || !hasPeople;
+  // Ordering a list of one says nothing. Hidden in Manage alongside the
+  // Manage button itself, so Done stands alone while editing.
+  sortControl.hidden = managing || people.length < 2;
   peopleList.hidden = managing;
   timeBar.hidden = managing || !hasPeople;
 
   if (!managing) {
     const date = dateForSlider(sliderValue);
+    syncSortControl();
     buildList();
     paint(date);
   }
@@ -580,23 +710,12 @@ function openForm(person) {
 
 function buildManageList() {
   manageList.innerHTML = "";
-  // Same grouping as the main list, so the roster you edit matches the one you
-  // read — same titled cards, same order, same styling.
-  for (const group of groupedPeople()) {
-    let container = manageList;
-    if (group.name) {
-      const card = document.createElement("li");
-      card.className = "family-card";
-      const heading = document.createElement("div");
-      heading.className = "family-heading";
-      heading.textContent = group.name;
-      card.append(heading);
-      const inner = document.createElement("ul");
-      inner.className = "family-people";
-      card.append(inner);
-      manageList.append(card);
-      container = inner;
-    }
+  // Same grouping as the main list, in whichever sort mode it's in, so the
+  // roster you edit matches the one you read — same titled cards, same order,
+  // same styling.
+  const mode = activeSortMode();
+  for (const group of groupsFor(mode)) {
+    const container = groupContainer(manageList, group);
 
     for (const person of group.people) {
       const li = document.createElement("li");
@@ -613,9 +732,9 @@ function buildManageList() {
         formatShortDate(parseDate(person.birthdate)),
         `${gradeName(person.anchorGrade)} in ${schoolYearLabel(person.anchorYear)}`,
       ];
-      // The card's heading always carries the family now, so repeating it in
-      // the row would just state it twice.
-      detail.textContent = bits.join(" · ");
+      // In Family mode the card's heading carries the family, so the row
+      // leaves it out; in the other modes the row is the only place for it.
+      detail.textContent = withFamily(bits.join(" · "), person, mode);
       info.append(name, detail);
 
       const actions = document.createElement("div");
@@ -744,6 +863,13 @@ el("import-btn").addEventListener("click", () => {
   backupText.hidden = true;
   backupText.value = "";
   showManageView();
+});
+
+// --- Sort wiring ---
+
+sortSelect.addEventListener("change", () => {
+  sortMode = sortSelect.value;
+  render();
 });
 
 // --- Slider wiring ---

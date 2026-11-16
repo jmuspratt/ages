@@ -27,7 +27,7 @@ Installable on iPhone via Safari → Share → Add to Home Screen.
 
 There is no server-side component. Every age and grade is arithmetic done in the browser from two stored numbers, so the app works fully offline and there is nothing to keep running.
 
-This is a deliberate difference from its sibling project `../hours`, which does run a persistent Node process under PM2 — but only to keep a Google Places API key server-side. Ages has no secret to hide and no external data source, so it stays purely static.
+That's deliberate: there's no secret to hide and no external data source, so the app stays purely static.
 
 ## Data model
 
@@ -60,6 +60,18 @@ There is no families list. A family is nothing but the set of distinct `family` 
 Every card is titled, including when only one family exists. An earlier version suppressed that heading on the grounds it said nothing new; cards made it say something essential, since an untitled card is just an anonymous box.
 
 Each family renders as a rounded card on the page background, titled with the family's name.
+
+### Sort modes
+
+A menu in the title bar, beside Manage, switches both lists between three groupings — **Family**, **Age** and **Birthday** — all drawn with the same cards:
+
+| Mode | Groups | Order | Row detail |
+| --- | --- | --- | --- |
+| Family | a card per family, unassigned bare | oldest first within each | Born April 2, 2017 |
+| Age | none — everyone bare | oldest first | Born April 2, 2017 · The Smiths |
+| Birthday | a card per month of the next birthday | soonest first | Turns 10 on April 2 · The Smiths |
+
+A card always means a named group, and bare rows always mean no group, so switching modes changes what is grouped, not how the screen looks. The family appears once: on the card in Family mode, in the row otherwise. Birthday order counts from the real today rather than the slider, so the list never reshuffles mid-drag. The mode is held in memory only, since the roster is the app's one storage key.
 
 Names join case-insensitively: typing "the smiths" when "The Smiths" exists assigns the existing spelling rather than opening a near-identical second group. Renaming a family means editing each member — acceptable while rosters are one household.
 

@@ -14,7 +14,7 @@ A single-page PWA that shows a set of kids' ages and American K-12 grade levels 
 
 ## Decisions already made — don't undo these without asking
 
-- **No backend, no PM2.** The sibling project `../hours` runs a Node process under PM2, but only to keep a Google Places API key server-side. Ages has no secret and no external data, so it's purely static. Cross-device sync was explicitly considered and declined in favour of Export/Import. Don't add a server, an API proxy, or a `deploy-api.sh` without checking first.
+- **No backend, no PM2.** Ages has no secret and no external data, so it's purely static. Cross-device sync was explicitly considered and declined in favour of Export/Import. Don't add a server, an API proxy, or a `deploy-api.sh` without checking first.
 - **No framework.** Vue was considered and rejected — the app is one list, one slider, and pure date math.
 - **Grade is captured, not derived.** Grade level is not a function of birthdate: cutoffs vary by district, and kids get held back or skip. Never try to compute it from the birthday. The user is asked once for "grade in school year X", and everything else is arithmetic. Don't add a "guess from birthdate" shortcut.
 - **Monthly slider, no date picker.** The spec explicitly didn't want a traditional date picker. Grade transitions always land on September 1, so month resolution loses nothing.
@@ -24,13 +24,16 @@ A single-page PWA that shows a set of kids' ages and American K-12 grade levels 
 - **Every family card carries its name.** The heading always renders, however many families exist — a card without a title is an anonymous box. There was once a rule suppressing it for a lone family; that was sound when a heading floated above a flat list and would have been the only thing on screen, and wrong the moment cards arrived. Don't reintroduce it. Unassigned people are the opposite case: no card and no heading, because there's no group to name.
 
 Unassigned people get neither heading nor card. The card is what marks a family off, so the remainder reads as "everyone else" unaided.
+- **Sort modes are groupings, not a second renderer.** Family, Age and Birthday each return `{name, people}` groups from `groupsFor(mode)`, the same shape as `groupedPeople()`, and both lists render whatever comes back: a named group is a titled card, a nameless one is bare rows. Family = family cards + bare remainder. Age = one nameless group, everyone bare, oldest first. Birthday = one card per month of the next birthday ("December 2026"), soonest first. Add a new mode by returning groups, never by teaching `buildList()` about it.
+- **Birthday order is measured from the real today, not the slider.** Re-sorting on drag would rebuild the list DOM and make rows jump under your thumb. A birthday already past this month lands under next year's month, so every birthday heading carries its year. Leap-day birthdays fall on Feb 28 in common years.
+- **Sort mode is not persisted.** `people_dates_data` is the only localStorage key, so `sortMode` lives in memory and every launch opens on Family. Persisting it would mean a second key — ask first.
 
 ## Frontend details
 
 ### HTML structure
 
 Single `index.html` with:
-- A fixed top bar: the app's name ("The Ages App") and a Manage button
+- A fixed top bar: the app's name ("The Ages App"), the sort menu and a Manage button
 - A date heading in the content area, scrolling with the list rather than pinned
 - A scrollable list of people
 - A hidden Manage panel, itself two mutually exclusive views
@@ -42,15 +45,21 @@ No hamburger menus, no navbars, no routing.
 
 `#manage-view` (roster, Add button, Export/Import, version) and `#person-form` are never on screen together.
 
-The roster carries the same titled family cards as the main list, from the same `groupedPeople()` — so the list you edit matches the list you read.
+The roster carries the same titled cards as the main list, from the same `groupsFor(activeSortMode())` — so the list you edit matches the list you read, in whichever sort mode it's in.
 
-It also shares the *styling*, not just the structure: `.family-card`, `.family-heading` and `.family-people` are used unmodified in both places, `#manage-panel`'s gutter matches `#people-list`'s, and `.manage-row` mirrors `.person-row`'s padding while `.manage-name` / `.manage-detail` mirror `.person-name` / `.person-birth`. There are deliberately **no** `#manage-list .family-*` overrides — the two screens drifted apart once already because the card carried its padding in one place and the row carried it in the other. If you restyle a card, restyle it once. The family never appears in a row's detail line — the card's heading always states it, so repeating it inside the row would say it twice.
+It also shares the *styling*, not just the structure: `.family-card`, `.family-heading` and `.family-people` are used unmodified in both places, `#manage-panel`'s gutter matches `#people-list`'s, and `.manage-row` mirrors `.person-row`'s padding while `.manage-name` / `.manage-detail` mirror `.person-name` / `.person-birth`. There are deliberately **no** `#manage-list .family-*` overrides — the two screens drifted apart once already because the card carried its padding in one place and the row carried it in the other. If you restyle a card, restyle it once. The family is stated exactly once: in Family mode the card heading carries it and the row leaves it out; in Age and Birthday modes no card names it, so `withFamily()` appends it to the row's detail line (main list and roster alike).
 
 Opening Manage lands on the roster — the form is not exposed until you tap **Add someone…** — and opening the form hides the roster, so editing one person doesn't leave the others sitting behind it. `showManageView()` and `openForm(person)` are the only two transitions; `openForm()` with no argument means adding.
 
 This is deliberately a view swap and not a modal — no overlay, no backdrop, no z-index, no scroll lock — which is how it satisfies "no modals, drawers, or overlays" while still reading as a sheet on a phone. The title bar's **Done** hides while the form is up, so Cancel and Save are the only exits and there's never a third ambiguous one.
 
 Both views are toggled with the `hidden` attribute, which is why `style.css` carries a global `[hidden] { display: none !important }`. The UA's own `[hidden]` rule loses to any author `display` declaration, and `#person-form` is `display: flex` — without the override, hiding the form silently does nothing. Don't remove it.
+
+### Sort menu
+
+A native `<select>` in the title bar, left of **Manage**: "By family", "By age", "By birthday". It's dressed as a plain-tier word (`#sort-current`, 13px `--accent`) with the real `<select>` stretched over it at `opacity: 0`. That's not decoration — the select must stay at `--font-size-zoom-safe` or iOS zooms on open, and 16px text would be too loud in the title bar. Keep the label in sync via `syncSortControl()`. It hides in Manage and when there are fewer than two people. The **Family** option is removed (not `hidden` — iOS's picker ignores that on `<option>`) while no families exist, because Family mode would look exactly like Age; `activeSortMode()` falls back to Age then.
+
+In Birthday mode the grey detail line reads "Turns 10 on April 2" (or "Turns 10 today") instead of "Born …"; unborn people keep "Born …".
 
 ### Each list row
 
@@ -90,7 +99,7 @@ Every colour is chosen against its background for WCAG AA at 15px (4.5:1), in bo
 Three, and only three. Don't invent a fourth:
 
 - **`.pill-btn`** — outlined pill, blue label, no fill. The two actions that start or commit a whole task: **Add someone** and **Save**.
-- **Plain text** (the bare `button` rule) — blue word, no container. Everything else: **Manage**, **Done**, **Cancel**, **Today**, **Export**, **Import**, and the per-row **Edit**. **Remove** is this tier too but in `--danger`. Row-level controls stay here deliberately — a pill on every row would put two outlined containers beside each person and make the roster louder than the list it mirrors.
+- **Plain text** (the bare `button` rule) — blue word, no container. Everything else: **Manage**, **Done**, **Cancel**, **Today**, **Export**, **Import**, the per-row **Edit**, and the sort menu's visible label (a `<select>` under the hood, styled to match). **Remove** is this tier too but in `--danger`. Row-level controls stay here deliberately — a pill on every row would put two outlined containers beside each person and make the roster louder than the list it mirrors.
 - **`.cta-btn`** — solid blue fill. Used exactly once, for the empty state's **Add someone…**, where there's nothing else on screen to compete with. If you find yourself reaching for it a second time, you want `.pill-btn`.
 
 **Today** deliberately sits in the plain tier and matches Manage: it's a shortcut back to now, not a commitment, and it already earns attention by appearing only when off-centre.
@@ -111,7 +120,7 @@ The **top bar** carries the active date in full: "Today is August 16, 2026" at c
 
 ### Offline behavior
 
-The service worker cache-firsts the entire app shell. There are no dynamic requests to exclude — unlike `../hours`, there's no `/api/` branch to write. Data lives in localStorage, not a cached file, so the app is fully functional offline.
+The service worker cache-firsts the entire app shell. There are no dynamic requests to exclude, so there's no `/api/` branch to write. Data lives in localStorage, not a cached file, so the app is fully functional offline.
 
 ### PWA manifest
 
